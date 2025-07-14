@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>语雀笔记导出器</title>
+  <link rel="stylesheet" type="text/css" href="styles.css">
+  <meta charset="UTF-8">
+</head>
+<body>
+  <div class="container">
+    <header class="app-header">
+      <h1>语雀笔记导出器</h1>
+      <p class="app-description">设置筛选条件，精准导出您需要的笔记</p>
+    </header>
+    
+    <!-- 筛选设置区域 -->
+    <section class="filter-section">
+      <!-- 日期筛选组 -->
+      <div class="filter-group">
+        <h3 class="group-title">
+          <span class="title-icon">📅</span>
+          时间范围
+        </h3>
+        <div class="date-inputs">
+          <div class="input-group">
+            <label class="input-label">开始日期</label>
+            <input type="date" id="startDate" class="date-input">
+          </div>
+          <div class="date-separator">至</div>
+          <div class="input-group">
+            <label class="input-label">结束日期</label>
+            <input type="date" id="endDate" class="date-input">
+          </div>
+        </div>
+      </div>
+      
+      <!-- 标签筛选组 -->
+      <div class="filter-group">
+        <h3 class="group-title">
+          <span class="title-icon">🏷️</span>
+          标签筛选
+        </h3>
+        <div class="tag-controls">
+          <div class="tag-selector">
+            <select id="tagSelect" class="tag-dropdown">
+              <option value="">选择标签...</option>
+            </select>
+            <button id="fetchTags" class="fetch-btn">获取标签</button>
+          </div>
+          
+          <!-- 选中标签显示 -->
+          <div id="selectedTagsInfo" class="selected-tags-container" style="display:none;">
+            <div class="selected-tags-header">
+              <span>已选择的标签</span>
+              <button id="clearTags" class="clear-btn">清空</button>
+            </div>
+            <div id="selectedTagsList" class="tags-list"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+    
+    <!-- 操作按钮区域 -->
+    <section class="action-section">
+      <div class="primary-actions">
+        <button id="fetchNotes" class="btn btn-primary">
+          <span class="btn-icon">🔍</span>
+          开始搜索
+        </button>
+        <button id="resetFilters" class="btn btn-secondary">
+          <span class="btn-icon">🔄</span>
+          重置筛选
+        </button>
+      </div>
+    </section>
+    
+    <!-- 结果显示区域 -->
+    <section class="result-section">
+      <div id="status" class="status-message"></div>
+      
+      <div class="result-actions" style="display:none;">
+        <button id="viewNotes" class="btn btn-outline">
+          <span class="btn-icon">👀</span>
+          预览笔记
+        </button>
+        <button id="copyNotes" class="btn btn-success" style="display:none;">
+          <span class="btn-icon">📋</span>
+          复制内容
+        </button>
+      </div>
+      
+      <div id="log" class="log-message"></div>
+      <div id="notesContent" class="notes-preview"></div>
+    </section>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

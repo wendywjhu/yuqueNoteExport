@@ -1,8 +1,8 @@
 {
     "manifest_version": 2,
-    "name": "语雀笔记导出器",
+    "name": "语雀小记导出器",
     "version": "1.0",
-    "description": "从语雀获取并保存笔记，支持标签筛选",
+    "description": "支持将您的语雀小记按日期、标签筛选导出为 Markdown 格式",
     "permissions": [
       "https://www.yuque.com/*",
       "cookies",

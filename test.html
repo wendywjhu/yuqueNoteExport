@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>语雀小记导出器 - 测试页面</title>
+  <link rel="stylesheet" type="text/css" href="styles.css">
+  <!-- Flatpickr CSS - 本地文件 -->
+  <link rel="stylesheet" href="flatpickr.min.css">
+  <link rel="stylesheet" href="material_green.css">
+  <meta charset="UTF-8">
+</head>
+<body>
+  <div class="container">
+    <header class="app-header">
+      <h1>语雀小记导出器</h1>
+    </header>
+    
+    <!-- 筛选设置区域 -->
+    <section class="filter-section">
+      <div class="unified-filter-group">
+        <!-- 状态显示区域 -->
+        <div id="filterStatus" class="filter-status" style="display:none;"></div>
+        
+        <!-- 日期筛选 -->
+        <div class="filter-item">
+          <div class="date-filter-container">
+            <!-- Flatpickr 日期范围选择器 -->
+            <div class="flatpickr-container">
+              <input type="text" id="dateRangePicker" class="flatpickr-input" placeholder="选择日期范围..." readonly>
+              <div class="quick-date-buttons">
+                <button type="button" class="quick-date-btn" data-period="week">最近一周</button>
+                <button type="button" class="quick-date-btn" data-period="month">最近一个月</button>
+                <button type="button" class="quick-date-btn" data-period="3months">最近三个月</button>
+                <button type="button" class="quick-date-btn" data-period="clear">清除</button>
+              </div>
+            </div>
+            
+            <!-- 隐藏的日期输入框 -->
+            <input type="hidden" id="startDate">
+            <input type="hidden" id="endDate">
+          </div>
+        </div>
+      
+        <!-- 标签筛选 -->
+        <div class="filter-item">
+        <div class="tag-controls">
+          <div class="tag-selector">
+            <select id="tagSelect" class="tag-dropdown">
+              <option value="">选择标签...</option>
+            </select>
+              <button id="fetchTags" class="fetch-btn" style="display:none;">获取标签</button>
+          </div>
+          
+          <!-- 选中标签显示 -->
+          <div id="selectedTagsInfo" class="selected-tags-container" style="display:none;">
+            <div class="selected-tags-header">
+              <span>已选择的标签</span>
+              <button id="clearTags" class="clear-btn">清空</button>
+            </div>
+            <div id="selectedTagsList" class="tags-list"></div>
+          </div>
+        </div>
+      </div>
+    
+    <!-- 操作按钮区域 -->
+        <div class="filter-actions">
+        <button id="fetchNotes" class="btn btn-primary">
+          <span class="btn-icon">🔍</span>
+            搜索
+        </button>
+        <button id="resetFilters" class="btn btn-secondary">
+          <span class="btn-icon">🔄</span>
+            重置
+          </button>
+          <button id="exportNotes" class="btn btn-success">
+            <span class="btn-icon">📤</span>
+            导出
+        </button>
+      </div>
+      </div>
+    </section>
+  </div>
+  
+  <!-- Flatpickr JS - 本地文件 -->
+  <script src="flatpickr.min.js"></script>
+  <script src="zh.js"></script>
+  <script>
+    // 简化版测试脚本
+    let flatpickrInstance = null;
+    
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('开始初始化...');
+      initializeDatePicker();
+      initializeQuickButtons();
+    });
+    
+    function initializeDatePicker() {
+      console.log('初始化Flatpickr...');
+      const dateRangePicker = document.getElementById('dateRangePicker');
+      
+      if (!dateRangePicker) {
+        console.error('找不到dateRangePicker元素');
+        return;
+      }
+      
+      if (typeof flatpickr === 'undefined') {
+        console.error('Flatpickr库未加载');
+        return;
+      }
+      
+      flatpickrInstance = flatpickr(dateRangePicker, {
+        mode: "range",
+        dateFormat: "Y-m-d",
+        locale: "zh",
+        allowInput: false,
+        clickOpens: true,
+        position: "below left",
+        animate: true,
+        monthSelectorType: "dropdown",
+        showMonths: 2,
+        static: false,
+        appendTo: document.body,
+        onChange: function(selectedDates, dateStr, instance) {
+          console.log('选择的日期:', selectedDates);
+          updateHiddenInputs(selectedDates);
+        },
+        onReady: function(selectedDates, dateStr, instance) {
+          console.log('Flatpickr初始化完成');
+        }
+      });
+      
+      console.log('Flatpickr实例:', flatpickrInstance);
+    }
+    
+    function initializeQuickButtons() {
+      const quickBtns = document.querySelectorAll('.quick-date-btn');
+      quickBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const period = e.target.dataset.period;
+          selectQuickDate(period);
+        });
+      });
+    }
+    
+    function updateHiddenInputs(selectedDates) {
+      const startDate = document.getElementById('startDate');
+      const endDate = document.getElementById('endDate');
+      
+      if (selectedDates.length >= 1) {
+        startDate.value = selectedDates[0].toISOString().split('T')[0];
+        console.log('开始日期:', startDate.value);
+      } else {
+        startDate.value = '';
+      }
+      
+      if (selectedDates.length >= 2) {
+        endDate.value = selectedDates[1].toISOString().split('T')[0];
+        console.log('结束日期:', endDate.value);
+      } else {
+        endDate.value = '';
+      }
+    }
+    
+    function selectQuickDate(period) {
+      if (!flatpickrInstance) {
+        console.error('Flatpickr实例不存在');
+        return;
+      }
+      
+      const today = new Date();
+      let startDate, endDate;
+      
+      // 清除之前的 active 状态
+      document.querySelectorAll('.quick-date-btn').forEach(btn => btn.classList.remove('active'));
+      
+      switch (period) {
+        case 'week':
+          startDate = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+          endDate = today;
+          break;
+        case 'month':
+          startDate = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+          endDate = today;
+          break;
+        case '3months':
+          startDate = new Date(today.getTime() - 90 * 24 * 60 * 60 * 1000);
+          endDate = today;
+          break;
+        case 'clear':
+          flatpickrInstance.clear();
+          return;
+        default:
+          return;
+      }
+      
+      // 设置 Flatpickr 的日期
+      flatpickrInstance.setDate([startDate, endDate]);
+      
+      // 设置对应按钮为 active
+      document.querySelector(`[data-period="${period}"]`).classList.add('active');
+    }
+  </script>
+</body>
+</html> 

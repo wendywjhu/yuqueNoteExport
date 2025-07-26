@@ -1,6 +1,10 @@
 // 存储可用标签和选中标签
 let availableTags = [];
 let selectedTags = [];
+let currentDateMode = null; // 记录当前选择的时间模式
+let selectedStartDate = null;
+let selectedEndDate = null;
+let flatpickrInstance = null; // Flatpickr 实例
 
 // DOM元素引用
 const elements = {
@@ -8,29 +12,191 @@ const elements = {
   tagSelect: document.getElementById('tagSelect'),
   startDate: document.getElementById('startDate'),
   endDate: document.getElementById('endDate'),
+  dateRangePicker: document.getElementById('dateRangePicker'),
   selectedTagsInfo: document.getElementById('selectedTagsInfo'),
   selectedTagsList: document.getElementById('selectedTagsList'),
   clearTags: document.getElementById('clearTags'),
   fetchNotes: document.getElementById('fetchNotes'),
   resetFilters: document.getElementById('resetFilters'),
-  viewNotes: document.getElementById('viewNotes'),
-  copyNotes: document.getElementById('copyNotes'),
-  resultActions: document.querySelector('.result-actions'),
-  status: document.getElementById('status'),
-  log: document.getElementById('log'),
-  notesContent: document.getElementById('notesContent')
+  exportNotes: document.getElementById('exportNotes'),
+  filterStatus: document.getElementById('filterStatus'),
+  quickDateBtns: document.querySelectorAll('.quick-date-btn')
 };
 
-// 获取标签按钮事件
+// 初始化 Flatpickr 日期选择器
+function initializeDatePicker() {
+  console.log('初始化Flatpickr...');
+  
+  if (!elements.dateRangePicker) {
+    console.error('找不到dateRangePicker元素');
+    return;
+  }
+  
+  if (typeof flatpickr === 'undefined') {
+    console.error('Flatpickr库未加载');
+    return;
+  }
+  
+  // 初始化 Flatpickr
+  flatpickrInstance = flatpickr(elements.dateRangePicker, {
+    mode: "range",
+    dateFormat: "Y-m-d",
+    locale: "zh", // 中文
+    allowInput: false,
+    clickOpens: true,
+    position: "below left",
+    animate: true,
+    monthSelectorType: "dropdown",
+    showMonths: 2, // 显示两个月份
+    static: false,
+    appendTo: document.body, // 添加到body，避免容器限制
+    onChange: function(selectedDates, dateStr, instance) {
+      updateHiddenInputs(selectedDates);
+    },
+    onOpen: function(selectedDates, dateStr, instance) {
+      // 弹出时的处理
+    },
+    onClose: function(selectedDates, dateStr, instance) {
+      // 关闭时的处理
+    },
+    onReady: function(selectedDates, dateStr, instance) {
+      console.log('Flatpickr初始化完成');
+    }
+  });
+  
+  console.log('Flatpickr实例:', flatpickrInstance);
+
+  // 便捷选择按钮事件
+  elements.quickDateBtns.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const period = e.target.dataset.period;
+      selectQuickDate(period);
+    });
+  });
+}
+
+// 更新隐藏的日期输入框
+function updateHiddenInputs(selectedDates) {
+  if (selectedDates.length >= 1) {
+    selectedStartDate = selectedDates[0];
+    elements.startDate.value = formatDate(selectedStartDate);
+  } else {
+    selectedStartDate = null;
+    elements.startDate.value = '';
+  }
+  
+  if (selectedDates.length >= 2) {
+    selectedEndDate = selectedDates[1];
+    elements.endDate.value = formatDate(selectedEndDate);
+  } else {
+    selectedEndDate = null;
+    elements.endDate.value = '';
+  }
+}
+
+// 格式化日期
+function formatDate(date) {
+  return date.toISOString().split('T')[0];
+}
+
+// 快捷日期选择
+function selectQuickDate(period) {
+  const today = new Date();
+  let startDate, endDate;
+  
+  // 清除之前的 active 状态
+  elements.quickDateBtns.forEach(btn => btn.classList.remove('active'));
+  
+  switch (period) {
+    case 'week':
+      startDate = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+      endDate = today;
+      currentDateMode = 'week';
+      break;
+    case 'month':
+      startDate = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+      endDate = today;
+      currentDateMode = 'month';
+      break;
+    case '3months':
+      startDate = new Date(today.getTime() - 90 * 24 * 60 * 60 * 1000);
+      endDate = today;
+      currentDateMode = '3months';
+      break;
+    case 'clear':
+      flatpickrInstance.clear();
+      currentDateMode = null;
+      selectedStartDate = null;
+      selectedEndDate = null;
+      elements.startDate.value = '';
+      elements.endDate.value = '';
+      return;
+    default:
+      return;
+  }
+  
+  // 设置 Flatpickr 的日期
+  flatpickrInstance.setDate([startDate, endDate]);
+  
+  // 设置对应按钮为 active
+  document.querySelector(`[data-period="${period}"]`).classList.add('active');
+}
+
+// 获取当前有效的时间范围
+function getEffectiveDateRange() {
+  if (selectedStartDate && selectedEndDate) {
+    const formatDate = (date) => {
+      return date.toISOString().split('T')[0];
+    };
+    
+    return {
+      startDate: formatDate(selectedStartDate),
+      endDate: formatDate(selectedEndDate)
+    };
+  } else {
+    return {
+      startDate: '',
+      endDate: ''
+    };
+  }
+}
+
+// 获取标签按钮事件（现在隐藏，但保留功能以备用）
 elements.fetchTags.addEventListener('click', () => {
   console.log('点击获取标签按钮');
-  elements.status.textContent = '正在获取标签...';
+  showFilterStatus('正在获取标签...');
   
   chrome.runtime.sendMessage({action: "fetchTags"}, (response) => {
     console.log('获取标签响应:', response);
-    elements.status.textContent = response ? response.message : '无响应';
+    if (response && response.message) {
+      showFilterStatus(response.message);
+    } else {
+      showFilterStatus('获取标签失败，请重试');
+    }
   });
 });
+
+// 自动获取标签函数
+function autoFetchTags() {
+  console.log('自动获取标签');
+  showFilterStatus('正在获取标签...');
+  
+  chrome.runtime.sendMessage({action: "autoFetchTags"}, (response) => {
+    console.log('自动获取标签响应:', response);
+    if (response && response.message) {
+      showFilterStatus(response.message);
+    } else {
+      showFilterStatus('获取标签失败，请重试');
+    }
+  });
+}
+
+// 显示筛选区域状态消息
+function showFilterStatus(message) {
+  elements.filterStatus.textContent = message;
+  elements.filterStatus.style.display = 'block';
+  // 不再自动隐藏，保持显示直到下次更新
+}
 
 // 显示标签列表
 function displayTags(tags) {
@@ -38,6 +204,12 @@ function displayTags(tags) {
   
   // 清空现有选项，保留默认选项
   elements.tagSelect.innerHTML = '<option value="">选择标签...</option>';
+  
+  // 添加无标签选项
+  const noTagOption = document.createElement('option');
+  noTagOption.value = '__NO_TAG__';
+  noTagOption.textContent = '无标签';
+  elements.tagSelect.appendChild(noTagOption);
   
   if (tags.length === 0) {
     const option = document.createElement('option');
@@ -78,7 +250,9 @@ function updateSelectedTagsDisplay() {
     selectedTags.forEach(tag => {
       const tagChip = document.createElement('span');
       tagChip.className = 'tag-chip';
-      tagChip.textContent = tag;
+      tagChip.setAttribute('data-tag', tag);
+      // 如果是无标签选项，显示特殊文本
+      tagChip.textContent = tag === '__NO_TAG__' ? '无标签' : tag;
       tagChip.title = '点击删除';
       
       // 添加删除功能
@@ -98,169 +272,156 @@ elements.clearTags.addEventListener('click', () => {
   updateSelectedTagsDisplay();
 });
 
-// 重置所有筛选条件
+// 重置筛选
 elements.resetFilters.addEventListener('click', () => {
   selectedTags = [];
-  elements.startDate.value = '';
-  elements.endDate.value = '';
-  elements.tagSelect.value = '';
   updateSelectedTagsDisplay();
   
-  // 清空结果
-  elements.notesContent.textContent = '';
-  elements.resultActions.style.display = 'none';
-  elements.copyNotes.style.display = 'none';
-  elements.status.textContent = '已重置所有筛选条件';
-  elements.log.textContent = '';
+  // 重置日期相关状态
+  currentDateMode = null;
+  selectedStartDate = null;
+  selectedEndDate = null;
+  flatpickrInstance.clear(); // 清除 Flatpickr 的日期
+  elements.startDate.value = '';
+  elements.endDate.value = '';
   
-  // 重新设置默认日期
-  initializeDates();
+  // 移除所有快捷按钮的active状态
+  elements.quickDateBtns.forEach(btn => btn.classList.remove('active'));
+  
+  // 禁用导出按钮
+  elements.exportNotes.disabled = true;
+  showFilterStatus('已重置所有筛选条件');
 });
 
 // 获取笔记
 elements.fetchNotes.addEventListener('click', () => {
+  // 获取有效的时间范围
+  const dateRange = getEffectiveDateRange();
+  
   const filterConditions = {
     tags: selectedTags,
-    startDate: elements.startDate.value,
-    endDate: elements.endDate.value
+    startDate: dateRange.startDate,
+    endDate: dateRange.endDate
   };
   
-  console.log('点击搜索按钮，筛选条件:', filterConditions);
-  
-  // 验证筛选条件
-  if (selectedTags.length === 0 && !elements.startDate.value && !elements.endDate.value) {
-    elements.status.textContent = '请至少设置一个筛选条件（标签或日期范围）';
-    return;
-  }
+  console.log('搜索条件:', filterConditions);
+  showFilterStatus('正在搜索笔记...');
   
   chrome.runtime.sendMessage({
     action: "fetchNotes",
-    selectedTags: selectedTags,
-    startDate: elements.startDate.value,
-    endDate: elements.endDate.value
+    filterConditions: filterConditions
   }, (response) => {
-    console.log('收到响应:', response);
-    elements.status.textContent = response ? response.message : '无响应';
-  });
-});
-
-// 查看笔记
-elements.viewNotes.addEventListener('click', () => {
-  chrome.storage.local.get('notes', (result) => {
-    if (result.notes) {
-      elements.notesContent.textContent = result.notes;
-      elements.copyNotes.style.display = 'block';
+    console.log('搜索响应:', response);
+    if (response && response.success) {
+      const message = formatStatsMessage(response);
+      showFilterStatus(message);
+      
+      // 启用导出按钮
+      elements.exportNotes.disabled = false;
     } else {
-      elements.notesContent.textContent = '未找到笔记';
-      elements.copyNotes.style.display = 'none';
+      showFilterStatus(response?.message || '搜索失败，请重试');
+      elements.exportNotes.disabled = true;
     }
   });
 });
 
-// 复制笔记
-elements.copyNotes.addEventListener('click', () => {
-  elements.log.textContent = '开始复制笔记...';
-
-  let notesContent = elements.notesContent.textContent;
-  let dataCount = notesContent.split('----------这里是分隔符----------').length - 1;
+// 导出笔记
+elements.exportNotes.addEventListener('click', () => {
+  const dateRange = getEffectiveDateRange();
   
-  navigator.clipboard.writeText(notesContent).then(() => {
-    elements.log.textContent = `笔记已复制到剪贴板！共 ${dataCount} 条笔记。`;
-  }).catch(err => {
-    console.error('复制失败：', err);
-    elements.log.textContent = '复制失败，请重试。';
+  const filterConditions = {
+    tags: selectedTags,
+    startDate: dateRange.startDate,
+    endDate: dateRange.endDate
+  };
+  
+  console.log('导出条件:', filterConditions);
+  showFilterStatus('正在导出笔记...');
+  
+  chrome.runtime.sendMessage({
+    action: "exportNotes",
+    filterConditions: filterConditions
+  }, (response) => {
+    console.log('导出响应:', response);
+    if (response && response.success) {
+      showFilterStatus('导出成功！');
+    } else {
+      showFilterStatus(response?.message || '导出失败，请重试');
+    }
   });
 });
 
-// 日期验证
-elements.startDate.addEventListener('change', validateDates);
-elements.endDate.addEventListener('change', validateDates);
-
+// 验证日期
 function validateDates() {
   const startDate = elements.startDate.value;
   const endDate = elements.endDate.value;
   
   if (startDate && endDate && startDate > endDate) {
-    elements.status.textContent = '开始日期不能晚于结束日期';
-    elements.startDate.style.borderColor = '#dc3545';
-    elements.endDate.style.borderColor = '#dc3545';
-  } else {
-    elements.startDate.style.borderColor = '#d1d5db';
-    elements.endDate.style.borderColor = '#d1d5db';
-    if (elements.status.textContent.includes('日期')) {
-      elements.status.textContent = '';
-    }
+    showFilterStatus('开始日期不能晚于结束日期');
+    return false;
   }
+  
+  return true;
 }
 
 // 初始化日期
 function initializeDates() {
-  // 设置默认日期范围（最近30天）
-  const today = new Date();
-  const thirtyDaysAgo = new Date(today.getTime() - (30 * 24 * 60 * 60 * 1000));
-  
-  elements.endDate.value = today.toISOString().split('T')[0];
-  elements.startDate.value = thirtyDaysAgo.toISOString().split('T')[0];
+  // 不再设置默认日期，让用户手动选择
+  // updateDateDisplay(); // 移除旧的日期显示更新
 }
 
-// 格式化统计信息
+// 格式化统计消息
 function formatStatsMessage(request) {
-  let statusText = `📊 搜索完成：总笔记 ${request.totalCount} 条，符合条件 ${request.savedCount} 条`;
+  const { totalNotes, filteredNotes, tags } = request;
+  let message = `找到 ${filteredNotes} 条笔记`;
   
-  if (request.tagStats && Object.keys(request.tagStats).length > 0) {
-    const tagStatsText = Object.entries(request.tagStats)
-      .filter(([tag, count]) => count > 0)
-      .map(([tag, count]) => `${tag}(${count})`)
-      .join('、');
-    
-    if (tagStatsText) {
-      statusText += `\n🏷️ 标签分布：${tagStatsText}`;
+  if (tags && tags.length > 0) {
+    const tagLabels = tags.map(tag => tag === '__NO_TAG__' ? '无标签' : tag);
+    message += ` (标签: ${tagLabels.join(', ')})`;
     }
+  
+  if (totalNotes !== filteredNotes) {
+    message += `，共 ${totalNotes} 条`;
   }
   
-  // 添加日期范围信息
-  if (request.filterParams) {
-    const { startDate, endDate } = request.filterParams;
-    if (startDate || endDate) {
-      const dateInfo = startDate && endDate 
-        ? `${startDate} 至 ${endDate}`
-        : startDate 
-        ? `${startDate} 之后`
-        : `${endDate} 之前`;
-      statusText += `\n📅 时间范围：${dateInfo}`;
-    }
-  }
-  
-  return statusText;
+  return message;
 }
 
-// 消息监听
+// 监听来自background.js的消息
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  console.log('在弹出窗口中收到消息:', request);
+  console.log('收到消息:', request);
   
-  if (request.action === "notesSaved") {
-    // 显示结果操作按钮
-    elements.resultActions.style.display = 'flex';
-    
-    // 格式化并显示统计信息
-    const statusText = formatStatsMessage(request);
-    elements.status.textContent = statusText;
-    
-  } else if (request.action === "tagsCollected") {
-    if (request.error) {
-      elements.status.textContent = `❌ 获取标签失败: ${request.error}`;
-    } else {
-      elements.status.textContent = `✅ 成功获取 ${request.tags.length} 个标签，请选择需要的标签`;
+  if (request.action === "displayTags") {
+    if (request.success) {
       displayTags(request.tags);
+      showFilterStatus(`成功获取 ${request.tags.length} 个标签`);
+    } else {
+      showFilterStatus(`获取标签失败: ${request.error || '未知错误'}`);
+    }
+  } else if (request.action === "exportCompleted") {
+    if (request.success) {
+      showFilterStatus(`导出成功！文件已保存为: ${request.filename}`);
+    } else {
+      showFilterStatus(`导出失败: ${request.error || '未知错误'}`);
     }
   }
 });
 
-// 初始化
+// 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', () => {
+  console.log('页面加载完成，开始初始化...');
+  
+  // 初始化日期选择器
+  initializeDatePicker();
+  
+  // 初始化日期
   initializeDates();
   
-  // 初始状态
-  elements.selectedTagsInfo.style.display = 'none';
-  elements.resultActions.style.display = 'none';
+  // 自动获取标签
+  autoFetchTags();
+  
+  // 禁用导出按钮（初始状态）
+  elements.exportNotes.disabled = true;
+  
+  console.log('初始化完成');
 });

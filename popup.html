@@ -18,6 +18,22 @@
   border-radius: 12px !important;
   box-shadow: 0 8px 32px rgba(76, 175, 80, 0.15) !important;
   overflow: hidden !important;
+  /* 关键：确保日历显示在最上层 */
+  z-index: 999999 !important;
+  position: fixed !important;
+  /* 居中显示 */
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+}
+
+/* 确保日历容器不受父容器overflow限制 */
+.flatpickr-calendar.open {
+  position: fixed !important;
+  z-index: 999999 !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
 }
 
 /* 月份头部 */
@@ -215,12 +231,21 @@
 @keyframes flatpickrFadeIn {
   from {
     opacity: 0;
-    transform: translateY(-10px) scale(0.95);
+    transform: translate(-50%, -50%) scale(0.95);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translate(-50%, -50%) scale(1);
   }
+}
+
+/* 确保日历显示在插件窗口之上 */
+body .flatpickr-calendar {
+  z-index: 999999 !important;
+  position: fixed !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
 }
 </style>
 </head>

@@ -26,6 +26,18 @@ body {
   /* 允许滚动查看所有内容 */
   overflow-y: auto;
   box-sizing: border-box;
+  /* 关键：确保不会限制子元素的z-index */
+  position: relative;
+  z-index: 1;
+}
+
+/* 确保Flatpickr日历可以突破容器限制 */
+.flatpickr-calendar {
+  position: fixed !important;
+  z-index: 999999 !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
 }
 
 /* 自定义滚动条样式 */

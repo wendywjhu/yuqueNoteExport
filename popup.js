@@ -44,7 +44,7 @@ function initializeDatePicker() {
     locale: "zh", // 中文
     allowInput: false,
     clickOpens: true,
-    position: "below left",
+    position: "auto", // 改为auto，让Flatpickr自动选择最佳位置
     animate: true,
     monthSelectorType: "dropdown",
     showMonths: 2, // 显示两个月份
@@ -54,7 +54,18 @@ function initializeDatePicker() {
       updateHiddenInputs(selectedDates);
     },
     onOpen: function(selectedDates, dateStr, instance) {
-      // 弹出时的处理
+      // 弹出时强制设置高z-index和位置
+      setTimeout(() => {
+        const calendar = document.querySelector('.flatpickr-calendar');
+        if (calendar) {
+          calendar.style.zIndex = '999999';
+          calendar.style.position = 'fixed';
+          // 确保日历显示在插件窗口之上
+          calendar.style.top = '50%';
+          calendar.style.left = '50%';
+          calendar.style.transform = 'translate(-50%, -50%)';
+        }
+      }, 10);
     },
     onClose: function(selectedDates, dateStr, instance) {
       // 关闭时的处理

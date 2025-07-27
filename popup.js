@@ -37,19 +37,23 @@ function initializeDatePicker() {
   }
   
   // 初始化 Flatpickr
+  console.log('开始初始化Flatpickr，目标元素:', elements.dateRangePicker);
   flatpickrInstance = flatpickr(elements.dateRangePicker, {
     mode: "range",
     dateFormat: "Y-m-d",
     locale: "zh", // 中文
     allowInput: false,
     clickOpens: true,
-    position: "auto", // 改为auto，让Flatpickr自动选择最佳位置
+    position: "auto",
     animate: true,
     monthSelectorType: "dropdown",
-    showMonths: 2, // 显示两个月份
+    showMonths: 2,
     static: false,
-    appendTo: document.body, // 添加到body，避免容器限制
     onChange: function(selectedDates, dateStr, instance) {
+      console.log('Flatpickr onChange 被触发');
+      console.log('selectedDates:', selectedDates);
+      console.log('dateStr:', dateStr);
+      console.log('instance:', instance);
       updateHiddenInputs(selectedDates);
     },
     onOpen: function(selectedDates, dateStr, instance) {
@@ -87,21 +91,29 @@ function initializeDatePicker() {
 
 // 更新隐藏的日期输入框
 function updateHiddenInputs(selectedDates) {
+  console.log('updateHiddenInputs 被调用，selectedDates:', selectedDates);
+  
   if (selectedDates.length >= 1) {
     selectedStartDate = selectedDates[0];
     elements.startDate.value = formatDate(selectedStartDate);
+    console.log('设置开始日期:', selectedStartDate, '格式化后:', elements.startDate.value);
   } else {
     selectedStartDate = null;
     elements.startDate.value = '';
+    console.log('清除开始日期');
   }
   
   if (selectedDates.length >= 2) {
     selectedEndDate = selectedDates[1];
     elements.endDate.value = formatDate(selectedEndDate);
+    console.log('设置结束日期:', selectedEndDate, '格式化后:', elements.endDate.value);
   } else {
     selectedEndDate = null;
     elements.endDate.value = '';
+    console.log('清除结束日期');
   }
+  
+  console.log('更新后的状态 - selectedStartDate:', selectedStartDate, 'selectedEndDate:', selectedEndDate);
 }
 
 // 格式化日期
@@ -111,6 +123,7 @@ function formatDate(date) {
 
 // 快捷日期选择
 function selectQuickDate(period) {
+  console.log('快捷日期选择被调用，period:', period);
   const today = new Date();
   let startDate, endDate;
   
@@ -134,6 +147,7 @@ function selectQuickDate(period) {
       currentDateMode = '3months';
       break;
     case 'clear':
+      console.log('清除日期');
       flatpickrInstance.clear();
       currentDateMode = null;
       selectedStartDate = null;
@@ -145,25 +159,47 @@ function selectQuickDate(period) {
       return;
   }
   
-  // 设置 Flatpickr 的日期
+  console.log('计算出的日期范围:', {startDate, endDate});
+  
+  // 手动更新全局变量，确保不依赖onChange事件
+  selectedStartDate = startDate;
+  selectedEndDate = endDate;
+  elements.startDate.value = formatDate(startDate);
+  elements.endDate.value = formatDate(endDate);
+  
+  // 设置 Flatpickr 的日期（这会触发onChange，但我们已经手动设置了）
   flatpickrInstance.setDate([startDate, endDate]);
   
   // 设置对应按钮为 active
   document.querySelector(`[data-period="${period}"]`).classList.add('active');
+  
+  console.log('快捷日期设置完成');
+  console.log('selectedStartDate:', selectedStartDate);
+  console.log('selectedEndDate:', selectedEndDate);
 }
 
 // 获取当前有效的时间范围
 function getEffectiveDateRange() {
+  console.log('getEffectiveDateRange 被调用');
+  console.log('selectedStartDate:', selectedStartDate);
+  console.log('selectedEndDate:', selectedEndDate);
+  console.log('elements.startDate.value:', elements.startDate.value);
+  console.log('elements.endDate.value:', elements.endDate.value);
+  
   if (selectedStartDate && selectedEndDate) {
     const formatDate = (date) => {
       return date.toISOString().split('T')[0];
     };
     
-    return {
+    const result = {
       startDate: formatDate(selectedStartDate),
       endDate: formatDate(selectedEndDate)
     };
+    
+    console.log('返回日期范围:', result);
+    return result;
   } else {
+    console.log('没有选择日期，返回空值');
     return {
       startDate: '',
       endDate: ''
@@ -174,12 +210,13 @@ function getEffectiveDateRange() {
 // 自动获取标签函数
 function autoFetchTags() {
   console.log('自动获取标签');
-  showFilterStatus('正在获取标签...');
+  // 移除页面显示，只在控制台记录
   
   chrome.runtime.sendMessage({action: "autoFetchTags"}, (response) => {
     console.log('自动获取标签响应:', response);
     if (response && response.message) {
-      showFilterStatus(response.message);
+      // 移除页面显示，只在控制台记录
+      console.log('标签获取消息:', response.message);
     } else {
       showFilterStatus('获取标签失败，请重试');
     }
@@ -383,7 +420,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "displayTags") {
     if (request.success) {
       displayTags(request.tags);
-      showFilterStatus(`成功获取 ${request.tags.length} 个标签`);
+      // 移除标签获取成功的页面显示，只在控制台记录
+      console.log(`成功获取 ${request.tags.length} 个标签`);
     } else {
       showFilterStatus(`获取标签失败: ${request.error || '未知错误'}`);
     }
@@ -428,4 +466,19 @@ document.addEventListener('DOMContentLoaded', () => {
   elements.exportNotes.disabled = true;
   
   console.log('初始化完成');
+  
+  // 添加一个测试按钮来检查当前日期状态
+  setTimeout(() => {
+    console.log('=== 当前日期状态检查 ===');
+    console.log('selectedStartDate:', selectedStartDate);
+    console.log('selectedEndDate:', selectedEndDate);
+    console.log('elements.startDate.value:', elements.startDate.value);
+    console.log('elements.endDate.value:', elements.endDate.value);
+    console.log('flatpickrInstance:', flatpickrInstance);
+    if (flatpickrInstance) {
+      console.log('flatpickrInstance.selectedDates:', flatpickrInstance.selectedDates);
+      console.log('flatpickrInstance.config:', flatpickrInstance.config);
+    }
+    console.log('=== 检查完成 ===');
+  }, 1000);
 });

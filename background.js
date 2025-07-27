@@ -16,27 +16,55 @@ function cleanHtml(rawHtml) {
           } else if (child.nodeType === Node.ELEMENT_NODE) {
             const tagName = child.tagName.toLowerCase();
             
-            // 处理不同标签的格式
+            // 处理不同标签的格式，输出Markdown兼容格式
             switch (tagName) {
+              case 'h1':
+                text += '\n## ' + extractText(child) + '\n\n';
+                break;
+              case 'h2':
+                text += '\n### ' + extractText(child) + '\n\n';
+                break;
+              case 'h3':
+                text += '\n#### ' + extractText(child) + '\n\n';
+                break;
+              case 'h4':
+              case 'h5':
+              case 'h6':
+                text += '\n##### ' + extractText(child) + '\n\n';
+                break;
               case 'ul':
               case 'ol':
-                text += '\n' + extractText(child);
+                text += '\n' + extractText(child) + '\n';
                 break;
               case 'li':
                 text += '- ' + extractText(child) + '\n';
                 break;
               case 'p':
-              case 'div':
-              case 'h1':
-              case 'h2':
-              case 'h3':
-              case 'h4':
-              case 'h5':
-              case 'h6':
                 text += '\n' + extractText(child) + '\n';
+                break;
+              case 'div':
+                text += extractText(child);
                 break;
               case 'br':
                 text += '\n';
+                break;
+              case 'strong':
+              case 'b':
+                text += '**' + extractText(child) + '**';
+                break;
+              case 'em':
+              case 'i':
+                text += '*' + extractText(child) + '*';
+                break;
+              case 'code':
+                text += '`' + extractText(child) + '`';
+                break;
+              case 'pre':
+                text += '\n```\n' + extractText(child) + '\n```\n';
+                break;
+              case 'blockquote':
+                const quotedText = extractText(child);
+                text += '\n> ' + quotedText.replace(/\n/g, '\n> ') + '\n';
                 break;
               default:
                 text += extractText(child);
@@ -60,18 +88,36 @@ function cleanHtml(rawHtml) {
     console.log('DOMParser不可用，使用正则表达式方法:', error);
   }
   
-  // 方案2：正则表达式方式 (兼容fallback)
+  // 方案2：正则表达式方式 (兼容fallback) - 输出Markdown格式
   console.log('使用正则表达式处理HTML');
   let text = rawHtml
-    .replace(/<ul>/g, '\n')
-    .replace(/<\/ul>/g, '')
-    .replace(/<ol>/g, '\n')
-    .replace(/<\/ol>/g, '')
-    .replace(/<li>/g, '- ')
+    // 处理标题标签
+    .replace(/<h1[^>]*>(.*?)<\/h1>/gi, '\n## $1\n\n')
+    .replace(/<h2[^>]*>(.*?)<\/h2>/gi, '\n### $1\n\n')
+    .replace(/<h3[^>]*>(.*?)<\/h3>/gi, '\n#### $1\n\n')
+    .replace(/<h[456][^>]*>(.*?)<\/h[456]>/gi, '\n##### $1\n\n')
+    // 处理格式化标签
+    .replace(/<strong[^>]*>(.*?)<\/strong>/gi, '**$1**')
+    .replace(/<b[^>]*>(.*?)<\/b>/gi, '**$1**')
+    .replace(/<em[^>]*>(.*?)<\/em>/gi, '*$1*')
+    .replace(/<i[^>]*>(.*?)<\/i>/gi, '*$1*')
+    .replace(/<code[^>]*>(.*?)<\/code>/gi, '`$1`')
+    .replace(/<pre[^>]*>(.*?)<\/pre>/gis, '\n```\n$1\n```\n')
+    .replace(/<blockquote[^>]*>(.*?)<\/blockquote>/gis, (match, content) => {
+      return '\n> ' + content.replace(/\n/g, '\n> ') + '\n';
+    })
+    // 处理列表
+    .replace(/<ul[^>]*>/g, '\n')
+    .replace(/<\/ul>/g, '\n')
+    .replace(/<ol[^>]*>/g, '\n')
+    .replace(/<\/ol>/g, '\n')
+    .replace(/<li[^>]*>/g, '- ')
     .replace(/<\/li>/g, '\n')
+    // 处理段落和换行
     .replace(/<p[^>]*>/g, '\n')
-    .replace(/<\/p>/g, '')
+    .replace(/<\/p>/g, '\n')
     .replace(/<br\s*\/?>/g, '\n')
+    // 移除所有其他HTML标签
     .replace(/<[^>]*>/g, '');
 
   // 移除零宽空格
@@ -352,6 +398,12 @@ async function saveNotesToStorage(notes, filterParams = {}) {
   const { tags = [], startDate, endDate } = filterParams;
   
   console.log(`开始处理 ${notes.length} 条笔记，筛选条件:`, filterParams);
+  console.log('日期筛选条件详情:', {
+    startDate: startDate,
+    endDate: endDate,
+    startDateType: typeof startDate,
+    endDateType: typeof endDate
+  });
   
   // 发送筛选阶段消息
   chrome.runtime.sendMessage({
@@ -390,22 +442,48 @@ async function saveNotesToStorage(notes, filterParams = {}) {
     // 日期筛选逻辑
     let matchesDate = true;
     if (startDate || endDate) {
-      const noteDate = new Date(note.content_updated_at || note.created_at);
+      console.log(`检查笔记 ${note.id} 的日期筛选:`, {
+        startDate: startDate,
+        endDate: endDate,
+        noteContentUpdatedAt: note.content_updated_at,
+        noteCreatedAt: note.created_at,
+        notePublishedAt: note.published_at
+      });
+      
+      // 尝试多个可能的日期字段
+      const noteDate = new Date(note.content_updated_at || note.created_at || note.published_at);
+      console.log(`笔记 ${note.id} 使用的日期:`, noteDate);
+      
       if (startDate) {
         const start = new Date(startDate);
-        matchesDate = matchesDate && noteDate >= start;
+        const isAfterStart = noteDate >= start;
+        console.log(`笔记 ${note.id} 开始日期检查: ${noteDate} >= ${start} = ${isAfterStart}`);
+        matchesDate = matchesDate && isAfterStart;
       }
       if (endDate) {
         const end = new Date(endDate);
         end.setHours(23, 59, 59, 999);
-        matchesDate = matchesDate && noteDate <= end;
+        const isBeforeEnd = noteDate <= end;
+        console.log(`笔记 ${note.id} 结束日期检查: ${noteDate} <= ${end} = ${isBeforeEnd}`);
+        matchesDate = matchesDate && isBeforeEnd;
       }
+      
+      console.log(`笔记 ${note.id} 日期筛选结果: ${matchesDate}`);
     }
     
     return matchesTags && matchesDate;
   });
 
   console.log(`筛选完成，符合条件的笔记: ${filteredNotes.length} 条`);
+  if (startDate || endDate) {
+    console.log('日期筛选统计:', {
+      总笔记数: notes.length,
+      筛选后笔记数: filteredNotes.length,
+      筛选掉笔记数: notes.length - filteredNotes.length,
+      开始日期: startDate,
+      结束日期: endDate
+    });
+  }
   
   if (filteredNotes.length === 0) {
     chrome.runtime.sendMessage({
@@ -511,14 +589,15 @@ async function saveNotesToStorage(notes, filterParams = {}) {
     
     console.log(`笔记 ${note.id} 元信息: 标题=${noteTitle}, 日期=${noteDate}, 标签=${noteTags}`);
     
-    const noteHeader = `=== 笔记 ${savedCount + 1} ===
-标题：${noteTitle}
-更新时间：${noteDate}
-标签：${noteTags}${noteUrl ? '\n链接：' + noteUrl : ''}
+    // 生成适配txt特性的Markdown格式
+    const noteHeader = `# ${noteTitle}
+
+**更新时间：** ${noteDate}  
+**标签：** ${noteTags}${noteUrl ? '  \n**链接：** ' + noteUrl : ''}
 
 `;
     
-    cleanContent = noteHeader + cleanContent.trimEnd() + '\n\n';
+    cleanContent = noteHeader + cleanContent.trimEnd() + '\n\n---\n\n';
     notesText += cleanContent;
     savedCount++;
     

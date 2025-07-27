@@ -634,12 +634,16 @@ async function fetchTagsDirectly() {
   });
 }
 
-// 导出笔记功能
+// 导出笔记功能 - 使用Chrome Downloads API (Manifest V3兼容)
 async function exportNotes(filterParams = {}) {
   try {
+    console.log('开始导出笔记，筛选参数:', filterParams);
+    
     // 从存储中获取笔记内容
     chrome.storage.local.get('notes', (result) => {
       if (result.notes) {
+        console.log('获取到笔记内容，长度:', result.notes.length);
+        
         // 生成文件名
         const now = new Date();
         const timestamp = now.toISOString().slice(0, 19).replace(/:/g, '-');
@@ -661,30 +665,54 @@ async function exportNotes(filterParams = {}) {
         
         filename += '.txt';
         
-        // 创建Blob对象
+        console.log('准备下载文件:', filename);
+        
+        // 创建Blob并转换为Data URL
         const blob = new Blob([result.notes], { type: 'text/plain;charset=utf-8' });
+        const reader = new FileReader();
         
-        // 创建下载链接
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        a.style.display = 'none';
+        reader.onload = function() {
+          const dataUrl = reader.result;
+          
+          // 使用Chrome Downloads API下载文件
+          chrome.downloads.download({
+            url: dataUrl,
+            filename: filename,
+            saveAs: true  // 让用户选择保存位置
+          }, (downloadId) => {
+            if (chrome.runtime.lastError) {
+              console.error('下载失败:', chrome.runtime.lastError);
+              chrome.runtime.sendMessage({
+                action: "exportCompleted",
+                success: false,
+                error: "下载失败: " + chrome.runtime.lastError.message
+              });
+            } else {
+              console.log('下载开始，ID:', downloadId);
+              chrome.runtime.sendMessage({
+                action: "exportCompleted",
+                success: true,
+                filename: filename,
+                downloadId: downloadId
+              });
+            }
+          });
+        };
         
-        // 触发下载
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        reader.onerror = function() {
+          console.error('文件读取失败');
+          chrome.runtime.sendMessage({
+            action: "exportCompleted",
+            success: false,
+            error: "文件读取失败"
+          });
+        };
         
-        // 释放URL对象
-        URL.revokeObjectURL(url);
+        // 读取Blob为Data URL
+        reader.readAsDataURL(blob);
         
-        chrome.runtime.sendMessage({
-          action: "exportCompleted",
-          success: true,
-          filename: filename
-        });
       } else {
+        console.error('没有找到笔记内容');
         chrome.runtime.sendMessage({
           action: "exportCompleted",
           success: false,
@@ -693,7 +721,7 @@ async function exportNotes(filterParams = {}) {
       }
     });
   } catch (error) {
-    console.error('Export error:', error);
+    console.error('导出错误:', error);
     chrome.runtime.sendMessage({
       action: "exportCompleted",
       success: false,

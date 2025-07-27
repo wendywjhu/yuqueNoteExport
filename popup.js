@@ -8,7 +8,6 @@ let flatpickrInstance = null; // Flatpickr 实例
 
 // DOM元素引用
 const elements = {
-  fetchTags: document.getElementById('fetchTags'),
   tagSelect: document.getElementById('tagSelect'),
   startDate: document.getElementById('startDate'),
   endDate: document.getElementById('endDate'),
@@ -172,21 +171,6 @@ function getEffectiveDateRange() {
   }
 }
 
-// 获取标签按钮事件（现在隐藏，但保留功能以备用）
-elements.fetchTags.addEventListener('click', () => {
-  console.log('点击获取标签按钮');
-  showFilterStatus('正在获取标签...');
-  
-  chrome.runtime.sendMessage({action: "fetchTags"}, (response) => {
-    console.log('获取标签响应:', response);
-    if (response && response.message) {
-      showFilterStatus(response.message);
-    } else {
-      showFilterStatus('获取标签失败，请重试');
-    }
-  });
-});
-
 // 自动获取标签函数
 function autoFetchTags() {
   console.log('自动获取标签');
@@ -316,23 +300,17 @@ elements.fetchNotes.addEventListener('click', () => {
   };
   
   console.log('搜索条件:', filterConditions);
-  showFilterStatus('正在搜索笔记...');
+  showFilterStatus('正在获取内容中……需要一些时间，请不要关闭插件，内容越多，等待时间也会延长，可以趁机活动身体、喝杯水，休息一下 ^_^');
+  
+  // 禁用导出按钮，等待搜索完成
+  elements.exportNotes.disabled = true;
   
   chrome.runtime.sendMessage({
     action: "fetchNotes",
     filterConditions: filterConditions
   }, (response) => {
-    console.log('搜索响应:', response);
-    if (response && response.success) {
-      const message = formatStatsMessage(response);
-      showFilterStatus(message);
-      
-      // 启用导出按钮
-      elements.exportNotes.disabled = false;
-    } else {
-      showFilterStatus(response?.message || '搜索失败，请重试');
-      elements.exportNotes.disabled = true;
-    }
+    console.log('搜索启动响应:', response);
+    // 不在这里处理搜索结果，搜索结果通过notesSaved消息处理
   });
 });
 
@@ -408,6 +386,21 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       showFilterStatus(`成功获取 ${request.tags.length} 个标签`);
     } else {
       showFilterStatus(`获取标签失败: ${request.error || '未知错误'}`);
+    }
+  } else if (request.action === "searchProgress") {
+    // 新增：处理搜索进度消息
+    showFilterStatus(request.message);
+  } else if (request.action === "notesSaved") {
+    // 处理笔记保存完成的消息
+    if (request.success) {
+      const message = formatStatsMessage(request);
+      showFilterStatus(message);
+      
+      // 启用导出按钮
+      elements.exportNotes.disabled = false;
+    } else {
+      showFilterStatus('搜索失败，请重试');
+      elements.exportNotes.disabled = true;
     }
   } else if (request.action === "exportCompleted") {
     if (request.success) {

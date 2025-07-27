@@ -39,19 +39,38 @@ function fetchNotes(url) {
     chrome.cookies.getAll({domain: "www.yuque.com"}, (cookies) => {
       let cookieString = cookies.map(cookie => `${cookie.name}=${cookie.value}`).join('; ');
       
+      console.log('请求笔记URL:', url);
+      console.log('Cookie数量:', cookies.length);
+      
       fetch(url, {
         headers: {
-          'Cookie': cookieString
+          'Cookie': cookieString,
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+          'Accept': 'application/json, text/plain, */*',
+          'Referer': 'https://www.yuque.com/',
+          'X-Requested-With': 'XMLHttpRequest'
         }
       })
       .then(response => {
+        console.log('笔记API响应状态:', response.status);
+        console.log('响应头:', Object.fromEntries(response.headers.entries()));
+        
         if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+          return response.text().then(text => {
+            console.log('笔记API错误响应内容:', text);
+            throw new Error(`HTTP error! status: ${response.status}, response: ${text}`);
+          });
         }
         return response.json();
       })
-      .then(data => resolve(data))
-      .catch(error => reject(error));
+      .then(data => {
+        console.log('笔记API成功响应:', data);
+        resolve(data);
+      })
+      .catch(error => {
+        console.error('笔记API详细错误:', error);
+        reject(error);
+      });
     });
   });
 }
@@ -80,45 +99,156 @@ function fetchFullNoteContent(noteId) {
   });
 }
 
+// 优化后的主函数 - 支持大量笔记
+function main(filterParams = {}) {
+  // 简化API参数，避免422错误
+  const baseUrl = "https://www.yuque.com/api/modules/note/notes/NoteController/index";
+  const limit = 50; // 减少批次大小，避免服务器负载问题
+  let notesCollected = [];
+  let startTime = Date.now();
+  const timeoutDuration = 60000; // 增加到60秒，支持大量笔记
+
+  // 发送开始消息
+  chrome.runtime.sendMessage({
+    action: "searchProgress",
+    stage: "fetching",
+    message: "正在获取笔记列表..."
+  });
+
+  function fetchBatch(offset) {
+    if (Date.now() - startTime > timeoutDuration) {
+      console.log('超时时间已到，开始处理已收集的笔记。');
+      saveNotesToStorage(notesCollected, filterParams);
+      return;
+    }
+
+    // 构建安全的API参数
+    const params = new URLSearchParams({
+      filter_type: 'all',
+      status: '0',
+      order: 'content_updated_at',
+      limit: limit.toString(),
+      offset: offset.toString()
+    });
+    
+    const url = `${baseUrl}?${params.toString()}`;
+    console.log(`正在获取批次：偏移量=${offset}，限制=${limit}`);
+    
+    fetchNotes(url)
+      .then(data => {
+        const notes = data.notes || [];
+        console.log(`已获取 ${notes.length} 条笔记。总计收集：${notesCollected.length + notes.length}`);
+        
+        notesCollected = notesCollected.concat(notes);
+        
+        // 发送进度更新
+        chrome.runtime.sendMessage({
+          action: "searchProgress",
+          stage: "fetching",
+          message: `已获取 ${notesCollected.length} 条笔记...`
+        });
+
+        // 继续获取条件：返回了完整的limit数量，说明可能还有更多
+        if (notes.length === limit) {
+          // 立即获取下一批，不延迟
+          fetchBatch(offset + limit);
+        } else {
+          // 没有更多笔记了，开始处理
+          console.log('已完成所有笔记获取，开始处理...');
+          saveNotesToStorage(notesCollected, filterParams);
+        }
+      })
+      .catch(error => {
+        console.error('获取笔记时出错:', error);
+        // 即使出错也处理已收集的笔记
+        if (notesCollected.length > 0) {
+          saveNotesToStorage(notesCollected, filterParams);
+        } else {
+          chrome.runtime.sendMessage({
+            action: "notesSaved", 
+            success: false,
+            error: "获取笔记失败: " + error.message
+          });
+        }
+      });
+  }
+
+  fetchBatch(0);
+}
+
+// 高性能并发获取完整内容
+async function fetchFullNoteContentBatch(noteIds, concurrency = 5) {
+  const results = [];
+  
+  // 分批并发处理
+  for (let i = 0; i < noteIds.length; i += concurrency) {
+    const batch = noteIds.slice(i, i + concurrency);
+    const batchPromises = batch.map(noteId => 
+      fetchFullNoteContent(noteId)
+        .then(data => ({ id: noteId, data, success: true }))
+        .catch(error => ({ id: noteId, error, success: false }))
+    );
+    
+    const batchResults = await Promise.all(batchPromises);
+    results.push(...batchResults);
+    
+    // 发送进度更新
+    chrome.runtime.sendMessage({
+      action: "searchProgress",
+      stage: "content",
+      message: `正在获取详细内容... ${results.length}/${noteIds.length}`
+    });
+    
+    // 小延迟避免过载
+    if (i + concurrency < noteIds.length) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+  }
+  
+  return results;
+}
+
+// 优化后的保存函数 - 支持大量笔记 + 并发处理
 async function saveNotesToStorage(notes, filterParams = {}) {
   const { tags = [], startDate, endDate } = filterParams;
   
-  let notesText = '';
-  let savedCount = 0;
-  let tagStats = {}; // 统计每个标签的笔记数量
-
-  // 初始化选中标签的统计
+  console.log(`开始处理 ${notes.length} 条笔记，筛选条件:`, filterParams);
+  
+  // 发送筛选阶段消息
+  chrome.runtime.sendMessage({
+    action: "searchProgress",
+    stage: "filtering",
+    message: `正在筛选 ${notes.length} 条笔记...`
+  });
+  
+  let tagStats = {};
   tags.forEach(tag => {
     tagStats[tag === '__NO_TAG__' ? '无标签' : tag] = 0;
   });
 
-  // 筛选笔记
+  // 第一阶段：快速筛选笔记
   let filteredNotes = notes.filter(note => {
-    // 标签筛选
+    // 标签筛选逻辑
     let matchesTags = true;
     if (tags.length > 0) {
-      // 检查是否包含无标签选项
       const hasNoTagFilter = tags.includes('__NO_TAG__');
       const hasRegularTags = tags.filter(tag => tag !== '__NO_TAG__');
       
       let matchesRegularTags = false;
       let matchesNoTag = false;
       
-      // 检查普通标签匹配
       if (hasRegularTags.length > 0) {
         matchesRegularTags = note.tags && note.tags.some(tag => hasRegularTags.includes(tag.name));
       }
       
-      // 检查无标签匹配
       if (hasNoTagFilter) {
         matchesNoTag = !note.tags || note.tags.length === 0;
       }
       
-      // 只要匹配其中一种条件即可
       matchesTags = matchesRegularTags || matchesNoTag;
     }
     
-    // 日期筛选
+    // 日期筛选逻辑
     let matchesDate = true;
     if (startDate || endDate) {
       const noteDate = new Date(note.content_updated_at || note.created_at);
@@ -128,7 +258,7 @@ async function saveNotesToStorage(notes, filterParams = {}) {
       }
       if (endDate) {
         const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999); // 设置为当天结束时间
+        end.setHours(23, 59, 59, 999);
         matchesDate = matchesDate && noteDate <= end;
       }
     }
@@ -136,29 +266,66 @@ async function saveNotesToStorage(notes, filterParams = {}) {
     return matchesTags && matchesDate;
   });
 
-  // 按更新时间倒序排列（最新的在前）
+  console.log(`筛选完成，符合条件的笔记: ${filteredNotes.length} 条`);
+  
+  if (filteredNotes.length === 0) {
+    chrome.runtime.sendMessage({
+      action: "notesSaved", 
+      success: true,
+      totalNotes: notes.length, 
+      filteredNotes: 0,
+      savedCount: 0,
+      tags: tags,
+      tagStats: tagStats,
+      filterParams: filterParams
+    });
+    return;
+  }
+
+  // 按更新时间倒序排列
   filteredNotes.sort((a, b) => new Date(b.content_updated_at || b.created_at) - new Date(a.content_updated_at || a.created_at));
 
+  // 第二阶段：并发获取完整内容
+  chrome.runtime.sendMessage({
+    action: "searchProgress",
+    stage: "content",
+    message: `正在获取 ${filteredNotes.length} 条笔记的详细内容...`
+  });
+
+  const noteIds = filteredNotes.map(note => note.id);
+  const contentResults = await fetchFullNoteContentBatch(noteIds, 8); // 8个并发
+  
+  // 创建ID到内容的映射
+  const contentMap = new Map();
+  contentResults.forEach(result => {
+    if (result.success) {
+      contentMap.set(result.id, result.data);
+    }
+  });
+
+  // 第三阶段：生成最终内容
+  chrome.runtime.sendMessage({
+    action: "searchProgress",
+    stage: "generating",
+    message: "正在生成导出内容..."
+  });
+
+  let notesText = '';
+  let savedCount = 0;
+
   for (const [index, note] of filteredNotes.entries()) {
-    let content;
-    try {
-      const fullNote = await fetchFullNoteContent(note.id);
-      // 从完整笔记数据中提取内容
-      content = fullNote.content.html || fullNote.content.body || fullNote.content.abstract || '';
-    } catch (error) {
-      console.error(`Error fetching full content for note ${note.id}:`, error);
-      content = note.content?.abstract || '';
+    let content = '';
+    
+    // 获取完整内容
+    const fullNoteData = contentMap.get(note.id);
+    if (fullNoteData) {
+      content = fullNoteData.content?.html || fullNoteData.content?.body || fullNoteData.content?.abstract || '';
+    } else {
+      // 回退到基本内容
+      content = note.content?.abstract || note.abstract || '内容获取失败';
     }
 
-    console.log(`原始内容 ${index + 1}:`);
-    console.log(content);
-    console.log('---原始内容结束---');
-
     let cleanContent = cleanHtml(content);
-
-    console.log(`清理后内容 ${index + 1}:`);
-    console.log(cleanContent);
-    console.log('---清理后内容结束---');
 
     // 添加笔记元信息
     const noteDate = new Date(note.content_updated_at || note.created_at).toLocaleDateString('zh-CN');
@@ -167,6 +334,7 @@ async function saveNotesToStorage(notes, filterParams = {}) {
     const noteUrl = note.book ? `https://www.yuque.com/${note.book.user.login}/${note.book.slug}/${note.slug}` : '';
     
     const noteHeader = `=== 笔记 ${savedCount + 1} ===
+标题：${noteTitle}
 更新时间：${noteDate}
 标签：${noteTags}${noteUrl ? '\n链接：' + noteUrl : ''}
 
@@ -176,7 +344,7 @@ async function saveNotesToStorage(notes, filterParams = {}) {
     notesText += cleanContent;
     savedCount++;
     
-    // 统计匹配的标签
+    // 统计标签
     if (note.tags && Array.isArray(note.tags)) {
       note.tags.forEach(tag => {
         if (tags.includes(tag.name)) {
@@ -185,16 +353,25 @@ async function saveNotesToStorage(notes, filterParams = {}) {
       });
     }
     
-    // 统计无标签笔记
     if (tags.includes('__NO_TAG__') && (!note.tags || note.tags.length === 0)) {
       tagStats['无标签']++;
     }
+    
+    // 每处理100条发送一次进度
+    if (savedCount % 100 === 0) {
+      chrome.runtime.sendMessage({
+        action: "searchProgress",
+        stage: "generating",
+        message: `正在生成导出内容... ${savedCount}/${filteredNotes.length}`
+      });
+    }
   }
 
+  console.log(`处理完成，保存 ${savedCount} 条笔记`);
+
   chrome.storage.local.set({notes: notesText.trim()}, () => {
-    console.log(`Notes saved to storage. Total notes: ${notes.length}, Filtered notes: ${filteredNotes.length}, Saved notes: ${savedCount}`);
+    console.log(`笔记已保存到存储。总笔记数：${notes.length}，筛选后笔记数：${filteredNotes.length}，已保存笔记数：${savedCount}`);
     
-    // 发送新的响应格式
     chrome.runtime.sendMessage({
       action: "notesSaved", 
       success: true,
@@ -223,166 +400,56 @@ function collectAllTags(notes) {
   return Array.from(tagSet).sort();
 }
 
-function main(filterParams = {}) {
-  const baseUrl = "https://www.yuque.com/api/modules/note/notes/NoteController/index?filter_type=all&status=0&merge_dynamic_data=0&order=content_updated_at&with_pinned_notes=true";
-  const limit = 50; // 保留批次大小优化：20 → 50
-  const totalNeeded = 1000;
-  let notesCollected = [];
-  let startTime = Date.now();
-  const timeoutDuration = 30000; // 30 seconds timeout
-
-  function fetchBatch(offset) {
-    if (Date.now() - startTime > timeoutDuration) {
-      console.log('Timeout reached. Saving collected notes.');
-      saveNotesToStorage(notesCollected, filterParams);
-      return;
-    }
-
-    const url = `${baseUrl}&limit=${limit}&offset=${offset}`;
-    console.log(`Fetching batch: offset=${offset}, limit=${limit}`);
-    
-    fetchNotes(url)
-      .then(data => {
-        console.log('API Response:', data); // 调试日志
-        
-        const notes = data.notes || [];
-        console.log(`Fetched ${notes.length} notes. Total collected before: ${notesCollected.length}`);
-        
-        notesCollected = notesCollected.concat(notes);
-        console.log(`Total collected after: ${notesCollected.length}`);
-
-        if (notes.length < limit || notesCollected.length >= totalNeeded) {
-          console.log('Finished fetching notes. Saving collected notes.');
-          saveNotesToStorage(notesCollected, filterParams);
-        } else {
-          // 减少延迟：100ms → 50ms
-          setTimeout(() => fetchBatch(offset + limit), 50);
-        }
-      })
-      .catch(error => {
-        console.error('Error fetching notes:', error);
-        saveNotesToStorage(notesCollected, filterParams);
-      });
-  }
-
-  fetchBatch(0);
-}
-
-// 新的直接获取标签函数
+// 使用专门的标签API直接获取标签
 async function fetchTagsDirectly() {
-  const tagUrl = "https://www.yuque.com/api/modules/note/tags/TagController/index";
+  const url = "https://www.yuque.com/api/modules/note/tags/TagController/index";
   
-  try {
-    console.log('Fetching tags directly from API...');
+  console.log('开始获取标签列表...');
+  
+  chrome.cookies.getAll({domain: "www.yuque.com"}, (cookies) => {
+    let cookieString = cookies.map(cookie => `${cookie.name}=${cookie.value}`).join('; ');
     
-    const response = await new Promise((resolve, reject) => {
-      chrome.cookies.getAll({domain: "www.yuque.com"}, (cookies) => {
-        let cookieString = cookies.map(cookie => `${cookie.name}=${cookie.value}`).join('; ');
-        
-        fetch(tagUrl, {
-          headers: {
-            'Cookie': cookieString
-          }
-        })
-        .then(response => {
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
-          return response.json();
-        })
-        .then(data => resolve(data))
-        .catch(error => reject(error));
+    fetch(url, {
+      headers: {
+        'Cookie': cookieString,
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+        'Accept': 'application/json, text/plain, */*'
+      }
+    })
+    .then(response => {
+      console.log('标签API响应状态:', response.status);
+      
+      if (!response.ok) {
+        return response.text().then(text => {
+          console.log('标签API错误响应:', text);
+          throw new Error(`HTTP error! status: ${response.status}, message: ${text}`);
+        });
+      }
+      return response.json();
+    })
+    .then(data => {
+      console.log('标签API成功响应:', data);
+      
+      // 从API响应中提取标签名称
+      const tags = data.data ? data.data.map(tag => tag.name).sort() : [];
+      
+      console.log(`成功获取 ${tags.length} 个标签:`, tags);
+      
+      chrome.runtime.sendMessage({
+        action: "displayTags",
+        success: true,
+        tags: tags
+      });
+    })
+    .catch(error => {
+      console.error('获取标签时出错:', error);
+      chrome.runtime.sendMessage({
+        action: "displayTags",
+        success: false,
+        error: error.message
       });
     });
-    
-    console.log('Tags API response:', response);
-    
-    // 提取标签名称
-    const tags = response.data ? response.data.map(tag => tag.name).sort() : [];
-    
-    console.log(`Successfully fetched ${tags.length} tags:`, tags);
-    
-    chrome.runtime.sendMessage({
-      action: "displayTags",
-      tags: tags,
-      success: true
-    });
-    
-    return tags;
-  } catch (error) {
-    console.error('Error fetching tags directly:', error);
-    
-    // 如果直接API失败，回退到原有方法
-    console.log('Falling back to note-based tag collection...');
-    return await fetchTagsFromNotes();
-  }
-}
-
-// 保留原有的从笔记中获取标签的方法作为备选
-async function fetchTagsFromNotes() {
-  const baseUrl = "https://www.yuque.com/api/modules/note/notes/NoteController/index?filter_type=all&status=0&merge_dynamic_data=0&order=content_updated_at&with_pinned_notes=true";
-  const limit = 50; // 增加批次大小
-  const totalNeeded = 200; 
-  let notesCollected = [];
-  let startTime = Date.now();
-  const timeoutDuration = 10000; // 减少超时时间
-
-  function fetchBatch(offset) {
-    return new Promise((resolve, reject) => {
-      if (Date.now() - startTime > timeoutDuration) {
-        console.log('Timeout reached while fetching tags from notes.');
-        resolve(notesCollected);
-        return;
-      }
-
-      const url = `${baseUrl}&limit=${limit}&offset=${offset}`;
-      fetchNotes(url)
-        .then(data => {
-          const notes = data.notes || [];
-          notesCollected = notesCollected.concat(notes);
-          
-          console.log(`Fetched ${notes.length} notes for tags. Total collected: ${notesCollected.length}`);
-
-          if (notes.length < limit || notesCollected.length >= totalNeeded) {
-            console.log('Finished fetching notes for tags.');
-            resolve(notesCollected);
-          } else {
-            setTimeout(async () => {
-              try {
-                await fetchBatch(offset + limit);
-                resolve(notesCollected);
-              } catch (error) {
-                reject(error);
-              }
-            }, 50); // 减少延迟
-          }
-        })
-        .catch(error => {
-          console.error('Error fetching notes for tags:', error);
-          resolve(notesCollected); 
-        });
-    });
-  }
-
-  try {
-    await fetchBatch(0);
-    const allTags = collectAllTags(notesCollected);
-    chrome.runtime.sendMessage({
-      action: "displayTags",
-      tags: allTags,
-      success: true
-    });
-    return allTags;
-  } catch (error) {
-    console.error('Error in fetchTagsFromNotes:', error);
-    chrome.runtime.sendMessage({
-      action: "displayTags",
-      tags: [],
-      success: false,
-      error: error.message
-    });
-    return [];
-  }
+  });
 }
 
 // 导出笔记功能
@@ -455,7 +522,7 @@ async function exportNotes(filterParams = {}) {
 
 // 监听来自popup的消息
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  console.log('Message received in background:', request);
+  console.log('后台收到消息:', request);
   
   if (request.action === "fetchNotes") {
     const filterParams = {
@@ -473,14 +540,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     };
     exportNotes(filterParams);
     sendResponse({success: true, message: "正在导出笔记..."});
-  } else if (request.action === "fetchTags") {
-    // 使用新的直接API获取标签
-    fetchTagsDirectly();
-    sendResponse({success: true, message: "正在获取标签..."});
   } else if (request.action === "autoFetchTags") {
-    // 新增：自动获取标签（页面加载时调用）
+    // 使用新的标签API直接获取
     fetchTagsDirectly();
-    sendResponse({success: true, message: "自动获取标签中..."});
+    sendResponse({success: true, message: "正在获取标签列表..."});
   }
   
   return true;

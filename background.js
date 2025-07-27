@@ -1,4 +1,67 @@
 function cleanHtml(rawHtml) {
+  try {
+    // 方案1：使用DOMParser API (Manifest V3 推荐方式)
+    if (typeof DOMParser !== 'undefined') {
+      console.log('使用DOMParser API处理HTML');
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(rawHtml, 'text/html');
+      
+      // 递归提取文本内容，保留格式
+      function extractText(node) {
+        let text = '';
+        
+        for (const child of node.childNodes) {
+          if (child.nodeType === Node.TEXT_NODE) {
+            text += child.textContent;
+          } else if (child.nodeType === Node.ELEMENT_NODE) {
+            const tagName = child.tagName.toLowerCase();
+            
+            // 处理不同标签的格式
+            switch (tagName) {
+              case 'ul':
+              case 'ol':
+                text += '\n' + extractText(child);
+                break;
+              case 'li':
+                text += '- ' + extractText(child) + '\n';
+                break;
+              case 'p':
+              case 'div':
+              case 'h1':
+              case 'h2':
+              case 'h3':
+              case 'h4':
+              case 'h5':
+              case 'h6':
+                text += '\n' + extractText(child) + '\n';
+                break;
+              case 'br':
+                text += '\n';
+                break;
+              default:
+                text += extractText(child);
+            }
+          }
+        }
+        
+        return text;
+      }
+      
+      let text = extractText(doc.body || doc);
+      
+      // 清理格式
+      text = text.replace(/\u200B/g, ''); // 移除零宽空格
+      text = text.replace(/\r\n|\r/g, '\n'); // 统一换行符
+      text = text.replace(/\n\s*\n/g, '\n\n'); // 合并多个空行
+      
+      return text.trim();
+    }
+  } catch (error) {
+    console.log('DOMParser不可用，使用正则表达式方法:', error);
+  }
+  
+  // 方案2：正则表达式方式 (兼容fallback)
+  console.log('使用正则表达式处理HTML');
   let text = rawHtml
     .replace(/<ul>/g, '\n')
     .replace(/<\/ul>/g, '')
@@ -27,15 +90,34 @@ function cleanHtml(rawHtml) {
   return text.trim();
 }
 
-// 辅助函数：解码 HTML 实体（适用于Service Worker环境）
+// 辅助函数：解码 HTML 实体（Manifest V3 兼容）
 function decodeHtmlEntities(text) {
-  // 在Service Worker中没有DOM，所以手动处理常见的HTML实体
+  try {
+    // 方案1：使用DOMParser解码HTML实体 (Manifest V3推荐)
+    if (typeof DOMParser !== 'undefined') {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(`<div>${text}</div>`, 'text/html');
+      return doc.querySelector('div').textContent || text;
+    }
+    
+    // 方案2：尝试使用document (Manifest V2兼容)
+    if (typeof document !== 'undefined') {
+      var textArea = document.createElement('textarea');
+      textArea.innerHTML = text;
+      return textArea.value;
+    }
+  } catch (error) {
+    console.log('DOM解码方法不可用，使用手动解码:', error);
+  }
+  
+  // 方案3：手动解码常见HTML实体 (最终fallback)
   const entities = {
     '&amp;': '&',
     '&lt;': '<',
     '&gt;': '>',
     '&quot;': '"',
     '&#x27;': "'",
+    '&#39;': "'",
     '&#x2F;': '/',
     '&nbsp;': ' ',
     '&mdash;': '—',
@@ -44,22 +126,35 @@ function decodeHtmlEntities(text) {
     '&rdquo;': '"',
     '&lsquo;': "'",
     '&rsquo;': "'",
-    '&hellip;': '…'
+    '&hellip;': '…',
+    '&copy;': '©',
+    '&reg;': '®',
+    '&trade;': '™'
   };
   
   let decoded = text;
+  
+  // 处理命名实体
   for (const [entity, char] of Object.entries(entities)) {
     decoded = decoded.replace(new RegExp(entity, 'g'), char);
   }
   
   // 处理数字实体 &#数字;
   decoded = decoded.replace(/&#(\d+);/g, (match, dec) => {
-    return String.fromCharCode(dec);
+    try {
+      return String.fromCharCode(parseInt(dec, 10));
+    } catch (e) {
+      return match; // 如果转换失败，保留原文
+    }
   });
   
   // 处理十六进制实体 &#x数字;
   decoded = decoded.replace(/&#x([0-9a-fA-F]+);/g, (match, hex) => {
-    return String.fromCharCode(parseInt(hex, 16));
+    try {
+      return String.fromCharCode(parseInt(hex, 16));
+    } catch (e) {
+      return match; // 如果转换失败，保留原文
+    }
   });
   
   return decoded;
@@ -340,12 +435,14 @@ async function saveNotesToStorage(notes, filterParams = {}) {
   const noteIds = filteredNotes.map(note => note.id);
   console.log('要获取详细内容的笔记ID:', noteIds);
   
+  // 声明contentMap在try-catch外部，确保作用域正确
+  let contentMap = new Map();
+  
   try {
     const contentResults = await fetchFullNoteContentBatch(noteIds, 5); // 减少并发数
     console.log('获取详细内容结果:', contentResults);
     
     // 创建ID到内容的映射
-    const contentMap = new Map();
     let successCount = 0;
     contentResults.forEach(result => {
       if (result.success) {
@@ -359,12 +456,14 @@ async function saveNotesToStorage(notes, filterParams = {}) {
     console.log(`成功获取 ${successCount}/${noteIds.length} 条笔记的详细内容`);
   } catch (error) {
     console.error('获取详细内容时出错:', error);
-    // 如果获取详细内容失败，跳过这个步骤，直接使用基础内容
-    const contentMap = new Map();
+    // 如果获取详细内容失败，contentMap保持为空Map，直接使用基础内容
+    console.log('将使用基础内容，不获取详细内容');
   }
 
   // 第三阶段：生成最终内容
-  console.log('开始生成导出内容...');
+  console.log('=== 开始第三阶段：生成最终内容 ===');
+  console.log('contentMap状态:', contentMap.size > 0 ? `包含${contentMap.size}条详细内容` : '为空，将使用基础内容');
+  
   chrome.runtime.sendMessage({
     action: "searchProgress",
     stage: "generating",
@@ -375,6 +474,8 @@ async function saveNotesToStorage(notes, filterParams = {}) {
   let savedCount = 0;
 
   console.log(`准备处理 ${filteredNotes.length} 条笔记`);
+  console.log('即将进入for循环...');
+  
   for (const [index, note] of filteredNotes.entries()) {
     console.log(`处理第 ${index + 1}/${filteredNotes.length} 条笔记，ID: ${note.id}`);
     let content = '';
@@ -392,11 +493,14 @@ async function saveNotesToStorage(notes, filterParams = {}) {
     
     let cleanContent;
     try {
+      console.log(`开始清理笔记 ${note.id} 的HTML内容...`);
       cleanContent = cleanHtml(content);
-      console.log(`笔记 ${note.id} 清理后内容长度: ${cleanContent.length}`);
+      console.log(`笔记 ${note.id} HTML清理成功，清理后内容长度: ${cleanContent.length}`);
     } catch (error) {
       console.error(`处理笔记 ${note.id} 的HTML清理时出错:`, error);
+      console.error('错误详情:', error.stack);
       cleanContent = content; // 如果清理失败，使用原始内容
+      console.log(`笔记 ${note.id} 使用原始内容，长度: ${cleanContent.length}`);
     }
 
     // 添加笔记元信息
@@ -433,8 +537,8 @@ async function saveNotesToStorage(notes, filterParams = {}) {
       tagStats['无标签']++;
     }
     
-    // 每处理100条发送一次进度
-    if (savedCount % 100 === 0) {
+    // 每处理10条发送一次进度
+    if (savedCount % 10 === 0) {
       chrome.runtime.sendMessage({
         action: "searchProgress",
         stage: "generating",
@@ -443,7 +547,9 @@ async function saveNotesToStorage(notes, filterParams = {}) {
     }
   }
 
-  console.log(`处理完成，保存 ${savedCount} 条笔记`);
+  console.log(`所有笔记处理完成！成功处理 ${savedCount} 条笔记`);
+  console.log(`最终导出内容总长度: ${notesText.length} 字符`);
+  console.log(`准备保存到存储...`);
 
   chrome.storage.local.set({notes: notesText.trim()}, () => {
     console.log(`笔记已保存到存储。总笔记数：${notes.length}，筛选后笔记数：${filteredNotes.length}，已保存笔记数：${savedCount}`);

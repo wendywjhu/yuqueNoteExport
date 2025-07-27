@@ -27,11 +27,42 @@ function cleanHtml(rawHtml) {
   return text.trim();
 }
 
-// 辅助函数：解码 HTML 实体
+// 辅助函数：解码 HTML 实体（适用于Service Worker环境）
 function decodeHtmlEntities(text) {
-  var textArea = document.createElement('textarea');
-  textArea.innerHTML = text;
-  return textArea.value;
+  // 在Service Worker中没有DOM，所以手动处理常见的HTML实体
+  const entities = {
+    '&amp;': '&',
+    '&lt;': '<',
+    '&gt;': '>',
+    '&quot;': '"',
+    '&#x27;': "'",
+    '&#x2F;': '/',
+    '&nbsp;': ' ',
+    '&mdash;': '—',
+    '&ndash;': '–',
+    '&ldquo;': '"',
+    '&rdquo;': '"',
+    '&lsquo;': "'",
+    '&rsquo;': "'",
+    '&hellip;': '…'
+  };
+  
+  let decoded = text;
+  for (const [entity, char] of Object.entries(entities)) {
+    decoded = decoded.replace(new RegExp(entity, 'g'), char);
+  }
+  
+  // 处理数字实体 &#数字;
+  decoded = decoded.replace(/&#(\d+);/g, (match, dec) => {
+    return String.fromCharCode(dec);
+  });
+  
+  // 处理十六进制实体 &#x数字;
+  decoded = decoded.replace(/&#x([0-9a-fA-F]+);/g, (match, hex) => {
+    return String.fromCharCode(parseInt(hex, 16));
+  });
+  
+  return decoded;
 }
 
 function fetchNotes(url) {
@@ -178,19 +209,30 @@ function main(filterParams = {}) {
 
 // 高性能并发获取完整内容
 async function fetchFullNoteContentBatch(noteIds, concurrency = 5) {
+  console.log(`开始批量获取 ${noteIds.length} 条笔记的详细内容，并发数: ${concurrency}`);
   const results = [];
   
   // 分批并发处理
   for (let i = 0; i < noteIds.length; i += concurrency) {
     const batch = noteIds.slice(i, i + concurrency);
+    console.log(`处理批次 ${Math.floor(i/concurrency) + 1}，包含笔记ID:`, batch);
+    
     const batchPromises = batch.map(noteId => 
       fetchFullNoteContent(noteId)
-        .then(data => ({ id: noteId, data, success: true }))
-        .catch(error => ({ id: noteId, error, success: false }))
+        .then(data => {
+          console.log(`成功获取笔记 ${noteId} 的详细内容`);
+          return { id: noteId, data, success: true };
+        })
+        .catch(error => {
+          console.log(`获取笔记 ${noteId} 详细内容失败:`, error.message);
+          return { id: noteId, error, success: false };
+        })
     );
     
     const batchResults = await Promise.all(batchPromises);
     results.push(...batchResults);
+    
+    console.log(`批次完成，当前总进度: ${results.length}/${noteIds.length}`);
     
     // 发送进度更新
     chrome.runtime.sendMessage({
@@ -201,10 +243,12 @@ async function fetchFullNoteContentBatch(noteIds, concurrency = 5) {
     
     // 小延迟避免过载
     if (i + concurrency < noteIds.length) {
+      console.log('等待100ms后继续下一批次...');
       await new Promise(resolve => setTimeout(resolve, 100));
     }
   }
   
+  console.log(`所有批次处理完成，总结果数: ${results.length}`);
   return results;
 }
 
@@ -286,6 +330,7 @@ async function saveNotesToStorage(notes, filterParams = {}) {
   filteredNotes.sort((a, b) => new Date(b.content_updated_at || b.created_at) - new Date(a.content_updated_at || a.created_at));
 
   // 第二阶段：并发获取完整内容
+  console.log(`开始获取 ${filteredNotes.length} 条笔记的详细内容...`);
   chrome.runtime.sendMessage({
     action: "searchProgress",
     stage: "content",
@@ -293,17 +338,33 @@ async function saveNotesToStorage(notes, filterParams = {}) {
   });
 
   const noteIds = filteredNotes.map(note => note.id);
-  const contentResults = await fetchFullNoteContentBatch(noteIds, 8); // 8个并发
+  console.log('要获取详细内容的笔记ID:', noteIds);
   
-  // 创建ID到内容的映射
-  const contentMap = new Map();
-  contentResults.forEach(result => {
-    if (result.success) {
-      contentMap.set(result.id, result.data);
-    }
-  });
+  try {
+    const contentResults = await fetchFullNoteContentBatch(noteIds, 5); // 减少并发数
+    console.log('获取详细内容结果:', contentResults);
+    
+    // 创建ID到内容的映射
+    const contentMap = new Map();
+    let successCount = 0;
+    contentResults.forEach(result => {
+      if (result.success) {
+        contentMap.set(result.id, result.data);
+        successCount++;
+      } else {
+        console.log(`笔记 ${result.id} 获取失败:`, result.error);
+      }
+    });
+    
+    console.log(`成功获取 ${successCount}/${noteIds.length} 条笔记的详细内容`);
+  } catch (error) {
+    console.error('获取详细内容时出错:', error);
+    // 如果获取详细内容失败，跳过这个步骤，直接使用基础内容
+    const contentMap = new Map();
+  }
 
   // 第三阶段：生成最终内容
+  console.log('开始生成导出内容...');
   chrome.runtime.sendMessage({
     action: "searchProgress",
     stage: "generating",
@@ -313,7 +374,9 @@ async function saveNotesToStorage(notes, filterParams = {}) {
   let notesText = '';
   let savedCount = 0;
 
+  console.log(`准备处理 ${filteredNotes.length} 条笔记`);
   for (const [index, note] of filteredNotes.entries()) {
+    console.log(`处理第 ${index + 1}/${filteredNotes.length} 条笔记，ID: ${note.id}`);
     let content = '';
     
     // 获取完整内容
@@ -325,13 +388,24 @@ async function saveNotesToStorage(notes, filterParams = {}) {
       content = note.content?.abstract || note.abstract || '内容获取失败';
     }
 
-    let cleanContent = cleanHtml(content);
+    console.log(`笔记 ${note.id} 原始内容长度: ${content.length}`);
+    
+    let cleanContent;
+    try {
+      cleanContent = cleanHtml(content);
+      console.log(`笔记 ${note.id} 清理后内容长度: ${cleanContent.length}`);
+    } catch (error) {
+      console.error(`处理笔记 ${note.id} 的HTML清理时出错:`, error);
+      cleanContent = content; // 如果清理失败，使用原始内容
+    }
 
     // 添加笔记元信息
     const noteDate = new Date(note.content_updated_at || note.created_at).toLocaleDateString('zh-CN');
     const noteTitle = note.title || '无标题';
     const noteTags = note.tags ? note.tags.map(t => t.name).join(', ') : '无标签';
     const noteUrl = note.book ? `https://www.yuque.com/${note.book.user.login}/${note.book.slug}/${note.slug}` : '';
+    
+    console.log(`笔记 ${note.id} 元信息: 标题=${noteTitle}, 日期=${noteDate}, 标签=${noteTags}`);
     
     const noteHeader = `=== 笔记 ${savedCount + 1} ===
 标题：${noteTitle}
@@ -343,6 +417,8 @@ async function saveNotesToStorage(notes, filterParams = {}) {
     cleanContent = noteHeader + cleanContent.trimEnd() + '\n\n';
     notesText += cleanContent;
     savedCount++;
+    
+    console.log(`已处理完成笔记 ${note.id}，当前进度: ${savedCount}/${filteredNotes.length}`);
     
     // 统计标签
     if (note.tags && Array.isArray(note.tags)) {

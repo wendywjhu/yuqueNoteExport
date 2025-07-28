@@ -816,31 +816,8 @@ async function exportNotes({ filterConditions } = {}) {
         const now = new Date();
         const timestamp = now.toISOString().slice(0, 19).replace(/:/g, '-');
         
-        // 构建文件名，包含筛选条件和格式信息
-        let filename = `语雀笔记导出_${timestamp}`;
-        
-        // 添加标签信息
-        if (filterConditions?.tags && filterConditions.tags.length > 0) {
-          const tagNames = filterConditions.tags.map(tag => tag === '__NO_TAG__' ? '无标签' : tag);
-          filename += `_标签(${tagNames.join(',')})`;
-        }
-        
-        // 添加时间范围信息
-        if (filterConditions?.startDate || filterConditions?.endDate) {
-          const dateRangeText = `${filterConditions.startDate || '开始'}至${filterConditions.endDate || '结束'}`;
-          filename += `_日期(${dateRangeText})`;
-        }
-        
-        // 添加导出格式信息
-        if (filterConditions?.exportOptions) {
-          const formats = [];
-          if (filterConditions.exportOptions.includeTitle) formats.push('标题');
-          if (filterConditions.exportOptions.includeTime) formats.push('时间');
-          if (filterConditions.exportOptions.includeTags) formats.push('标签');
-          if (formats.length > 0 && formats.length < 3) {
-            filename += `_格式(${formats.join('+')})`;
-          }
-        }
+        // 构建简洁的文件名
+        let filename = `语雀笔记_${timestamp}`;
         
         filename += '.txt';
         

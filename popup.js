@@ -416,7 +416,7 @@ function formatStatsMessage(request) {
     }
   
   if (totalNotes !== filteredNotes) {
-    message += `，共 ${totalNotes} 条`;
+    message += `，合计搜索了 ${totalNotes} 条笔记`;
   }
   
   return message;

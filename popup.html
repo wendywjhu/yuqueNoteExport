@@ -283,20 +283,14 @@ body .flatpickr-calendar {
       
         <!-- 标签筛选 -->
         <div class="filter-item">
-        <div class="tag-controls">
-          <div class="tag-selector">
-            <select id="tagSelect" class="tag-dropdown">
-              <option value="">选择标签...</option>
-            </select>
-          </div>
-          
-          <!-- 选中标签显示 -->
-          <div id="selectedTagsInfo" class="selected-tags-container" style="display:none;">
-            <div class="selected-tags-header">
-              <span>已选择的标签</span>
-              <button id="clearTags" class="clear-btn">清空</button>
+          <div class="tag-integrated-container">
+            <div class="tag-input-area">
+              <select id="tagSelect" class="tag-dropdown-compact">
+                <option value="">选择标签...</option>
+              </select>
+              <button id="clearTags" class="clear-tags-btn" style="display:none;">清空</button>
             </div>
-            <div id="selectedTagsList" class="tags-list"></div>
+            <div id="selectedTagsList" class="selected-tags-chips"></div>
           </div>
         </div>
         

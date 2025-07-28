@@ -12,7 +12,6 @@ const elements = {
   startDate: document.getElementById('startDate'),
   endDate: document.getElementById('endDate'),
   dateRangePicker: document.getElementById('dateRangePicker'),
-  selectedTagsInfo: document.getElementById('selectedTagsInfo'),
   selectedTagsList: document.getElementById('selectedTagsList'),
   clearTags: document.getElementById('clearTags'),
   fetchNotes: document.getElementById('fetchNotes'),
@@ -273,12 +272,16 @@ elements.tagSelect.addEventListener('change', (e) => {
 
 // 更新选中标签显示
 function updateSelectedTagsDisplay() {
+  // 清空标签列表
+  elements.selectedTagsList.innerHTML = '';
+  
+  // 显示/隐藏清空按钮
   if (selectedTags.length === 0) {
-    elements.selectedTagsInfo.style.display = 'none';
+    elements.clearTags.style.display = 'none';
   } else {
-    elements.selectedTagsInfo.style.display = 'block';
-    elements.selectedTagsList.innerHTML = '';
+    elements.clearTags.style.display = 'inline-block';
     
+    // 创建标签芯片
     selectedTags.forEach(tag => {
       const tagChip = document.createElement('span');
       tagChip.className = 'tag-chip';

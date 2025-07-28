@@ -564,4 +564,89 @@ body {
   }
 }
 
+/* === 紧凑导出格式选项样式 === */
+.export-format-section {
+  margin-top: 12px;
+  padding: 8px 0;
+  border-top: 1px solid #e8f5e9;
+}
+
+.compact-label {
+  font-size: 13px;
+  color: #666;
+  font-weight: 500;
+  margin-bottom: 6px;
+  display: block;
+}
+
+.export-format-options {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.compact-checkbox {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 13px;
+  color: #555;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.compact-checkbox:hover {
+  color: #2e7d32;
+  background-color: #f1f8e9;
+}
+
+.compact-checkbox input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+.mini-checkmark {
+  position: relative;
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  background-color: #fff;
+  border: 1.5px solid #ddd;
+  border-radius: 3px;
+  margin-right: 6px;
+  transition: all 0.3s ease;
+}
+
+.compact-checkbox input:checked ~ .mini-checkmark {
+  background-color: #4caf50;
+  border-color: #4caf50;
+}
+
+.mini-checkmark:after {
+  content: "";
+  position: absolute;
+  display: none;
+  left: 3px;
+  top: 1px;
+  width: 3px;
+  height: 6px;
+  border: solid white;
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg);
+}
+
+.compact-checkbox input:checked ~ .mini-checkmark:after {
+  display: block;
+}
+
+.compact-checkbox input:checked {
+  color: #2e7d32;
+  font-weight: 500;
+}
+
   

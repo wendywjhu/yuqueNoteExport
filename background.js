@@ -581,6 +581,13 @@ async function saveNotesToStorage(notes, filterParams = {}) {
       console.log(`笔记 ${note.id} 使用原始内容，长度: ${cleanContent.length}`);
     }
 
+    // 获取导出选项
+    const exportOptions = filterParams.exportOptions || {
+      includeTitle: true,
+      includeTime: true,
+      includeTags: true
+    };
+    
     // 添加笔记元信息
     const noteDate = new Date(note.content_updated_at || note.created_at).toLocaleDateString('zh-CN');
     const noteTitle = note.title || '无标题';
@@ -588,14 +595,31 @@ async function saveNotesToStorage(notes, filterParams = {}) {
     const noteUrl = note.book ? `https://www.yuque.com/${note.book.user.login}/${note.book.slug}/${note.slug}` : '';
     
     console.log(`笔记 ${note.id} 元信息: 标题=${noteTitle}, 日期=${noteDate}, 标签=${noteTags}`);
+    console.log(`导出选项:`, exportOptions);
     
-    // 生成适配txt特性的Markdown格式
-    const noteHeader = `# ${noteTitle}
-
-**更新时间：** ${noteDate}  
-**标签：** ${noteTags}${noteUrl ? '  \n**链接：** ' + noteUrl : ''}
-
-`;
+    // 根据用户选择生成笔记头部
+    let noteHeader = '';
+    
+    // 标题（如果选择包含标题）
+    if (exportOptions.includeTitle) {
+      noteHeader += `# ${noteTitle}\n\n`;
+    }
+    
+    // 元信息行
+    const metaInfo = [];
+    if (exportOptions.includeTime) {
+      metaInfo.push(`**更新时间：** ${noteDate}`);
+    }
+    if (exportOptions.includeTags) {
+      metaInfo.push(`**标签：** ${noteTags}`);
+    }
+    if (noteUrl) {
+      metaInfo.push(`**链接：** ${noteUrl}`);
+    }
+    
+    if (metaInfo.length > 0) {
+      noteHeader += metaInfo.join('  \n') + '\n\n';
+    }
     
     cleanContent = noteHeader + cleanContent.trimEnd() + '\n\n---\n\n';
     notesText += cleanContent;
@@ -630,7 +654,15 @@ async function saveNotesToStorage(notes, filterParams = {}) {
   console.log(`最终导出内容总长度: ${notesText.length} 字符`);
   console.log(`准备保存到存储...`);
 
-  chrome.storage.local.set({notes: notesText.trim()}, () => {
+  // 保存原始笔记数据、完整内容和筛选后的笔记ID
+  chrome.storage.local.set({
+    rawNotes: filteredNotes.map(note => ({
+      ...note,
+      cleanContent: cleanHtml(note.content?.abstract || note.abstract || '内容获取失败'),
+      fullContent: contentMap.get(note.id)?.content?.html || contentMap.get(note.id)?.content?.body || null
+    })),
+    filteredNoteIds: filteredNotes.map(note => note.id)
+  }, () => {
     console.log(`笔记已保存到存储。总笔记数：${notes.length}，筛选后笔记数：${filteredNotes.length}，已保存笔记数：${savedCount}`);
     
     chrome.runtime.sendMessage({
@@ -714,32 +746,100 @@ async function fetchTagsDirectly() {
 }
 
 // 导出笔记功能 - 使用Chrome Downloads API (Manifest V3兼容)
-async function exportNotes(filterParams = {}) {
+async function exportNotes({ filterConditions } = {}) {
   try {
-    console.log('开始导出笔记，筛选参数:', filterParams);
+    console.log('开始导出笔记，筛选参数:', filterConditions);
     
-    // 从存储中获取笔记内容
-    chrome.storage.local.get('notes', (result) => {
-      if (result.notes) {
-        console.log('获取到笔记内容，长度:', result.notes.length);
+    // 从存储中获取原始笔记数据
+    chrome.storage.local.get(['rawNotes', 'filteredNoteIds'], (result) => {
+      if (result.rawNotes && result.filteredNoteIds) {
+        console.log('获取到原始笔记数据，准备根据导出选项重新格式化');
+        console.log('导出选项:', filterConditions?.exportOptions);
+        console.log('筛选后的笔记数量:', result.filteredNoteIds.length);
+        
+        // 获取需要导出的笔记
+        const notesToExport = result.rawNotes.filter(note => 
+          result.filteredNoteIds.includes(note.id)
+        );
+        
+        // 重新生成导出内容
+        let notesText = '';
+        for (const note of notesToExport) {
+          // 获取导出选项
+          const exportOptions = filterConditions?.exportOptions || {
+            includeTitle: true,
+            includeTime: true,
+            includeTags: true
+          };
+          console.log('当前笔记的导出选项:', exportOptions);
+          console.log('导出选项来源:', filterConditions?.exportOptions ? '用户选择' : '默认值');
+          
+          // 添加笔记元信息
+          const noteDate = new Date(note.content_updated_at || note.created_at).toLocaleDateString('zh-CN');
+          const noteTitle = note.title || '无标题';
+          const noteTags = note.tags ? note.tags.map(t => t.name).join(', ') : '无标签';
+          const noteUrl = note.book ? `https://www.yuque.com/${note.book.user.login}/${note.book.slug}/${note.slug}` : '';
+          
+          // 根据用户选择生成笔记头部
+          let noteHeader = '';
+          
+          // 标题（如果选择包含标题）
+          if (exportOptions.includeTitle) {
+            noteHeader += `# ${noteTitle}\n\n`;
+          }
+          
+          // 元信息行
+          const metaInfo = [];
+          if (exportOptions.includeTime) {
+            metaInfo.push(`**更新时间：** ${noteDate}`);
+          }
+          if (exportOptions.includeTags) {
+            metaInfo.push(`**标签：** ${noteTags}`);
+          }
+          if (noteUrl) {
+            metaInfo.push(`**链接：** ${noteUrl}`);
+          }
+          
+          if (metaInfo.length > 0) {
+            noteHeader += metaInfo.join('  \n') + '\n\n';
+          }
+          
+          // 使用已经清理过的内容
+          const cleanContent = note.cleanContent || note.fullContent || '内容获取失败';
+          
+          notesText += noteHeader + cleanContent.trimEnd() + '\n\n---\n\n';
+        }
+        
+        console.log('笔记内容重新格式化完成，长度:', notesText.length);
         
         // 生成文件名
         const now = new Date();
         const timestamp = now.toISOString().slice(0, 19).replace(/:/g, '-');
         
-        // 构建文件名，包含筛选条件信息
+        // 构建文件名，包含筛选条件和格式信息
         let filename = `语雀笔记导出_${timestamp}`;
         
         // 添加标签信息
-        if (filterParams.tags && filterParams.tags.length > 0) {
-          const tagNames = filterParams.tags.map(tag => tag === '__NO_TAG__' ? '无标签' : tag);
+        if (filterConditions?.tags && filterConditions.tags.length > 0) {
+          const tagNames = filterConditions.tags.map(tag => tag === '__NO_TAG__' ? '无标签' : tag);
           filename += `_标签(${tagNames.join(',')})`;
         }
         
         // 添加时间范围信息
-        if (filterParams.startDate || filterParams.endDate) {
-          const dateRangeText = `${filterParams.startDate || '开始'}至${filterParams.endDate || '结束'}`;
+        if (filterConditions?.startDate || filterConditions?.endDate) {
+          const dateRangeText = `${filterConditions.startDate || '开始'}至${filterConditions.endDate || '结束'}`;
           filename += `_日期(${dateRangeText})`;
+        }
+        
+        // 添加导出格式信息
+        if (filterConditions?.exportOptions) {
+          const formats = [];
+          if (filterConditions.exportOptions.includeTitle) formats.push('标题');
+          if (filterConditions.exportOptions.includeTime) formats.push('时间');
+          if (filterConditions.exportOptions.includeTags) formats.push('标签');
+          if (formats.length > 0 && formats.length < 3) {
+            filename += `_格式(${formats.join('+')})`;
+          }
         }
         
         filename += '.txt';
@@ -747,7 +847,7 @@ async function exportNotes(filterParams = {}) {
         console.log('准备下载文件:', filename);
         
         // 创建Blob并转换为Data URL
-        const blob = new Blob([result.notes], { type: 'text/plain;charset=utf-8' });
+        const blob = new Blob([notesText.trim()], { type: 'text/plain;charset=utf-8' });
         const reader = new FileReader();
         
         reader.onload = function() {
@@ -822,12 +922,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     main(filterParams);
     sendResponse({success: true, message: "正在搜索笔记..."});
   } else if (request.action === "exportNotes") {
-    const filterParams = {
-      tags: request.filterConditions?.tags || [],
-      startDate: request.filterConditions?.startDate,
-      endDate: request.filterConditions?.endDate
-    };
-    exportNotes(filterParams);
+    console.log('收到导出请求，完整参数：', request);
+    exportNotes(request);
     sendResponse({success: true, message: "正在导出笔记..."});
   } else if (request.action === "autoFetchTags") {
     // 使用新的标签API直接获取

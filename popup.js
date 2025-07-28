@@ -355,13 +355,22 @@ elements.fetchNotes.addEventListener('click', () => {
 elements.exportNotes.addEventListener('click', () => {
   const dateRange = getEffectiveDateRange();
   
+  // 获取导出格式选项
+  const exportOptions = {
+    includeTitle: document.getElementById('exportTitle').checked,
+    includeTime: document.getElementById('exportTime').checked,
+    includeTags: document.getElementById('exportTags').checked
+  };
+  
   const filterConditions = {
     tags: selectedTags,
     startDate: dateRange.startDate,
-    endDate: dateRange.endDate
+    endDate: dateRange.endDate,
+    exportOptions: exportOptions
   };
   
   console.log('导出条件:', filterConditions);
+  console.log('导出格式选项:', exportOptions);
   showFilterStatus('正在导出笔记...');
   
   chrome.runtime.sendMessage({

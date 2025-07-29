@@ -776,7 +776,7 @@ async function exportNotes({ filterConditions } = {}) {
           
           // 添加笔记元信息
           const noteDate = new Date(note.content_updated_at || note.created_at).toLocaleDateString('zh-CN');
-          const noteTitle = note.title || '无标题';
+          const noteTitle = note.title || '';
           const noteTags = note.tags ? note.tags.map(t => t.name).join(', ') : '无标签';
           const noteUrl = note.book ? `https://www.yuque.com/${note.book.user.login}/${note.book.slug}/${note.slug}` : '';
           

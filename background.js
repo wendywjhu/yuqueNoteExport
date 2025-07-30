@@ -148,9 +148,9 @@ function decodeHtmlEntities(text) {
     
     // 方案2：尝试使用document (Manifest V2兼容)
     if (typeof document !== 'undefined') {
-      var textArea = document.createElement('textarea');
-      textArea.innerHTML = text;
-      return textArea.value;
+  var textArea = document.createElement('textarea');
+  textArea.innerHTML = text;
+  return textArea.value;
     }
   } catch (error) {
     console.log('DOM解码方法不可用，使用手动解码:', error);
@@ -553,7 +553,7 @@ async function saveNotesToStorage(notes, filterParams = {}) {
 
   console.log(`准备处理 ${filteredNotes.length} 条笔记`);
   console.log('即将进入for循环...');
-  
+
   for (const [index, note] of filteredNotes.entries()) {
     console.log(`处理第 ${index + 1}/${filteredNotes.length} 条笔记，ID: ${note.id}`);
     let content = '';
@@ -587,7 +587,7 @@ async function saveNotesToStorage(notes, filterParams = {}) {
       includeTime: true,
       includeTags: true
     };
-    
+
     // 添加笔记元信息
     const noteDate = new Date(note.content_updated_at || note.created_at).toLocaleDateString('zh-CN');
     const noteTitle = note.title || '无标题';
@@ -698,38 +698,38 @@ async function fetchTagsDirectly() {
   const url = "https://www.yuque.com/api/modules/note/tags/TagController/index";
   
   console.log('开始获取标签列表...');
-  
-  chrome.cookies.getAll({domain: "www.yuque.com"}, (cookies) => {
-    let cookieString = cookies.map(cookie => `${cookie.name}=${cookie.value}`).join('; ');
     
+      chrome.cookies.getAll({domain: "www.yuque.com"}, (cookies) => {
+        let cookieString = cookies.map(cookie => `${cookie.name}=${cookie.value}`).join('; ');
+        
     fetch(url, {
-      headers: {
+          headers: {
         'Cookie': cookieString,
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
         'Accept': 'application/json, text/plain, */*'
-      }
-    })
-    .then(response => {
+          }
+        })
+        .then(response => {
       console.log('标签API响应状态:', response.status);
       
-      if (!response.ok) {
+          if (!response.ok) {
         return response.text().then(text => {
           console.log('标签API错误响应:', text);
           throw new Error(`HTTP error! status: ${response.status}, message: ${text}`);
         });
-      }
-      return response.json();
-    })
+          }
+          return response.json();
+        })
     .then(data => {
       console.log('标签API成功响应:', data);
-      
+    
       // 从API响应中提取标签名称
       const tags = data.data ? data.data.map(tag => tag.name).sort() : [];
-      
+    
       console.log(`成功获取 ${tags.length} 个标签:`, tags);
-      
-      chrome.runtime.sendMessage({
-        action: "displayTags",
+    
+    chrome.runtime.sendMessage({
+      action: "displayTags",
         success: true,
         tags: tags
       });
@@ -786,7 +786,7 @@ async function exportNotes({ filterConditions } = {}) {
           // 标题（如果选择包含标题）
           if (exportOptions.includeTitle) {
             noteHeader += `# ${noteTitle}\n\n`;
-          }
+              }
           
           // 元信息行
           const metaInfo = [];
@@ -857,11 +857,11 @@ async function exportNotes({ filterConditions } = {}) {
         
         reader.onerror = function() {
           console.error('文件读取失败');
-          chrome.runtime.sendMessage({
-            action: "exportCompleted",
+        chrome.runtime.sendMessage({
+          action: "exportCompleted",
             success: false,
             error: "文件读取失败"
-          });
+        });
         };
         
         // 读取Blob为Data URL

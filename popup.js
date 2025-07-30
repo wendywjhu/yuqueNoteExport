@@ -4,14 +4,14 @@ let selectedTags = [];
 let currentDateMode = null; // 记录当前选择的时间模式
 let selectedStartDate = null;
 let selectedEndDate = null;
-let flatpickrInstance = null; // Flatpickr 实例
 
 // DOM元素引用
 const elements = {
   tagSelect: document.getElementById('tagSelect'),
   startDate: document.getElementById('startDate'),
   endDate: document.getElementById('endDate'),
-  dateRangePicker: document.getElementById('dateRangePicker'),
+  startDateInput: document.getElementById('startDateInput'),
+  endDateInput: document.getElementById('endDateInput'),
   selectedTagsList: document.getElementById('selectedTagsList'),
   clearTags: document.getElementById('clearTags'),
   fetchNotes: document.getElementById('fetchNotes'),
@@ -21,98 +21,117 @@ const elements = {
   quickDateBtns: document.querySelectorAll('.quick-date-btn')
 };
 
-// 初始化 Flatpickr 日期选择器
-function initializeDatePicker() {
-  console.log('初始化Flatpickr...');
+// 初始化日期输入框
+function initializeDateInputs() {
+  console.log('初始化日期输入框...');
   
-  if (!elements.dateRangePicker) {
-    console.error('找不到dateRangePicker元素');
+  if (!elements.startDateInput || !elements.endDateInput) {
+    console.error('找不到日期输入框元素');
     return;
   }
   
-  if (typeof flatpickr === 'undefined') {
-    console.error('Flatpickr库未加载');
-    return;
-  }
+  // 不设置默认日期，让用户主动选择
+  elements.startDateInput.value = '';
+  elements.endDateInput.value = '';
   
-  // 初始化 Flatpickr
-  console.log('开始初始化Flatpickr，目标元素:', elements.dateRangePicker);
-  flatpickrInstance = flatpickr(elements.dateRangePicker, {
-    mode: "range",
-    dateFormat: "Y-m-d",
-    locale: "zh", // 中文
-    allowInput: false,
-    clickOpens: true,
-    position: "auto",
-    animate: true,
-    monthSelectorType: "dropdown",
-    showMonths: 2,
-    static: false,
-    onChange: function(selectedDates, dateStr, instance) {
-      console.log('Flatpickr onChange 被触发');
-      console.log('selectedDates:', selectedDates);
-      console.log('dateStr:', dateStr);
-      console.log('instance:', instance);
-      updateHiddenInputs(selectedDates);
-    },
-    onOpen: function(selectedDates, dateStr, instance) {
-      // 弹出时强制设置高z-index和位置
-      setTimeout(() => {
-        const calendar = document.querySelector('.flatpickr-calendar');
-        if (calendar) {
-          calendar.style.zIndex = '999999';
-          calendar.style.position = 'fixed';
-          // 确保日历显示在插件窗口之上
-          calendar.style.top = '50%';
-          calendar.style.left = '50%';
-          calendar.style.transform = 'translate(-50%, -50%)';
-        }
-      }, 10);
-    },
-    onClose: function(selectedDates, dateStr, instance) {
-      // 关闭时的处理
-    },
-    onReady: function(selectedDates, dateStr, instance) {
-      console.log('Flatpickr初始化完成');
-    }
-  });
+  // 清空隐藏的输入框
+  elements.startDate.value = '';
+  elements.endDate.value = '';
   
-  console.log('Flatpickr实例:', flatpickrInstance);
-
-  // 便捷选择按钮事件
+  // 初始化全局变量
+  selectedStartDate = null;
+  selectedEndDate = null;
+  
+  // 添加输入事件监听器
+  elements.startDateInput.addEventListener('change', handleDateInputChange);
+  elements.startDateInput.addEventListener('blur', handleDateInputChange);
+  elements.endDateInput.addEventListener('change', handleDateInputChange);
+  elements.endDateInput.addEventListener('blur', handleDateInputChange);
+  
+  // 添加快捷按钮事件监听器
   elements.quickDateBtns.forEach(btn => {
     btn.addEventListener('click', (e) => {
       const period = e.target.dataset.period;
       selectQuickDate(period);
     });
   });
+  
+  console.log('日期输入框初始化完成');
 }
 
-// 更新隐藏的日期输入框
-function updateHiddenInputs(selectedDates) {
-  console.log('updateHiddenInputs 被调用，selectedDates:', selectedDates);
+// 处理日期输入框变化
+function handleDateInputChange(event) {
+  console.log('日期输入框变化');
   
-  if (selectedDates.length >= 1) {
-    selectedStartDate = selectedDates[0];
-    elements.startDate.value = formatDate(selectedStartDate);
-    console.log('设置开始日期:', selectedStartDate, '格式化后:', elements.startDate.value);
-  } else {
-    selectedStartDate = null;
-    elements.startDate.value = '';
-    console.log('清除开始日期');
+  const input = event.target;
+  const startDateStr = elements.startDateInput.value;
+  const endDateStr = elements.endDateInput.value;
+  
+  // 清除之前的错误状态
+  elements.startDateInput.classList.remove('error');
+  elements.endDateInput.classList.remove('error');
+  
+  // 验证当前输入的日期
+  if (input.value && !isValidDateInput(input.value)) {
+    input.classList.add('error');
+    showFilterStatus('请输入合理日期');
+    return;
   }
   
-  if (selectedDates.length >= 2) {
-    selectedEndDate = selectedDates[1];
-    elements.endDate.value = formatDate(selectedEndDate);
-    console.log('设置结束日期:', selectedEndDate, '格式化后:', elements.endDate.value);
-  } else {
-    selectedEndDate = null;
-    elements.endDate.value = '';
-    console.log('清除结束日期');
+  // 验证日期范围
+  if (startDateStr && endDateStr && startDateStr > endDateStr) {
+    elements.endDateInput.classList.add('error');
+    showFilterStatus('开始日期不能晚于结束日期');
+    return;
   }
   
-  console.log('更新后的状态 - selectedStartDate:', selectedStartDate, 'selectedEndDate:', selectedEndDate);
+  // 清除状态提示（如果日期有效）
+  if ((startDateStr && isValidDateInput(startDateStr)) || (endDateStr && isValidDateInput(endDateStr))) {
+    // 可以在这里清除状态，但不强制清空
+  }
+  
+  // 更新隐藏的输入框 - 转换为使用短横线格式
+  elements.startDate.value = startDateStr ? convertToHyphenFormat(startDateStr) : '';
+  elements.endDate.value = endDateStr ? convertToHyphenFormat(endDateStr) : '';
+  
+  // 更新全局变量
+  selectedStartDate = startDateStr ? new Date(startDateStr) : null;
+  selectedEndDate = endDateStr ? new Date(endDateStr) : null;
+  
+  // 清除快捷按钮的active状态
+  elements.quickDateBtns.forEach(btn => btn.classList.remove('active'));
+  currentDateMode = null;
+  
+  console.log('日期更新完成:', { selectedStartDate, selectedEndDate });
+}
+
+// 验证日期输入是否合理
+function isValidDateInput(dateString) {
+  if (!dateString) return true; // 空值是有效的
+  
+  const regex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!regex.test(dateString)) return false;
+  
+  const date = new Date(dateString);
+  const isValidDate = date instanceof Date && !isNaN(date) && date.toISOString().slice(0, 10) === dateString;
+  
+  // 检查日期是否在合理范围内（1900年到2100年）
+  if (isValidDate) {
+    const year = date.getFullYear();
+    return year >= 1900 && year <= 2100;
+  }
+  
+  return false;
+}
+
+// 转换日期格式为短横线格式（用于显示）
+function convertToHyphenFormat(dateString) {
+  return dateString; // HTML5 date input已经是YYYY-MM-DD格式
+}
+
+// 兼容性：保留原有的验证函数
+function isValidDate(dateString) {
+  return isValidDateInput(dateString);
 }
 
 // 格式化日期
@@ -147,10 +166,11 @@ function selectQuickDate(period) {
       break;
     case 'clear':
       console.log('清除日期');
-      flatpickrInstance.clear();
       currentDateMode = null;
       selectedStartDate = null;
       selectedEndDate = null;
+      elements.startDateInput.value = '';
+      elements.endDateInput.value = '';
       elements.startDate.value = '';
       elements.endDate.value = '';
       return;
@@ -160,14 +180,20 @@ function selectQuickDate(period) {
   
   console.log('计算出的日期范围:', {startDate, endDate});
   
-  // 手动更新全局变量，确保不依赖onChange事件
+  // 更新输入框
+  const startDateStr = formatDate(startDate);
+  const endDateStr = formatDate(endDate);
+  
+  elements.startDateInput.value = startDateStr;
+  elements.endDateInput.value = endDateStr;
+  
+  // 更新隐藏的输入框 - 使用短横线格式
+  elements.startDate.value = convertToHyphenFormat(startDateStr);
+  elements.endDate.value = convertToHyphenFormat(endDateStr);
+  
+  // 更新全局变量
   selectedStartDate = startDate;
   selectedEndDate = endDate;
-  elements.startDate.value = formatDate(startDate);
-  elements.endDate.value = formatDate(endDate);
-  
-  // 设置 Flatpickr 的日期（这会触发onChange，但我们已经手动设置了）
-  flatpickrInstance.setDate([startDate, endDate]);
   
   // 设置对应按钮为 active
   document.querySelector(`[data-period="${period}"]`).classList.add('active');
@@ -316,7 +342,8 @@ elements.resetFilters.addEventListener('click', () => {
   currentDateMode = null;
   selectedStartDate = null;
   selectedEndDate = null;
-  flatpickrInstance.clear(); // 清除 Flatpickr 的日期
+  elements.startDateInput.value = '';
+  elements.endDateInput.value = '';
   elements.startDate.value = '';
   elements.endDate.value = '';
   
@@ -465,8 +492,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 document.addEventListener('DOMContentLoaded', () => {
   console.log('页面加载完成，开始初始化...');
   
-  // 初始化日期选择器
-  initializeDatePicker();
+  // 初始化日期输入框
+  initializeDateInputs();
   
   // 初始化日期
   initializeDates();
@@ -486,11 +513,6 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('selectedEndDate:', selectedEndDate);
     console.log('elements.startDate.value:', elements.startDate.value);
     console.log('elements.endDate.value:', elements.endDate.value);
-    console.log('flatpickrInstance:', flatpickrInstance);
-    if (flatpickrInstance) {
-      console.log('flatpickrInstance.selectedDates:', flatpickrInstance.selectedDates);
-      console.log('flatpickrInstance.config:', flatpickrInstance.config);
-    }
     console.log('=== 检查完成 ===');
   }, 1000);
 });

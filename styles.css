@@ -5,11 +5,11 @@ body {
   padding: 0;
   background-color: #f5f7fa;
   color: #333;
-  font-size: 14px;
-  line-height: 1.6;
+  font-size: 12px;
+  line-height: 1.4;
   /* 设置body固定高度和宽度，适应弹窗限制 */
-  width: 620px;
-  height: 450px;
+  width: 310px;
+  height: 400px;
   overflow: hidden;
 }
 
@@ -18,7 +18,7 @@ body {
   width: 100%;
   height: 100%;
   background-color: white;
-  padding: 18px;
+  padding: 12px;
   margin: 0;
   /* 移除圆角和阴影，让内容填满弹窗 */
   border-radius: 0;
@@ -31,14 +31,7 @@ body {
   z-index: 1;
 }
 
-/* 确保Flatpickr日历可以突破容器限制 */
-.flatpickr-calendar {
-  position: fixed !important;
-  z-index: 999999 !important;
-  top: 50% !important;
-  left: 50% !important;
-  transform: translate(-50%, -50%) !important;
-}
+
 
 /* 自定义滚动条样式 */
 .container::-webkit-scrollbar {
@@ -61,22 +54,22 @@ body {
 /* === 对比原则：突出标题 === */
 .app-header {
   text-align: center;
-  margin-bottom: 12px;
-  padding-bottom: 8px;
-  border-bottom: 2px solid #f0f2f5;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #f0f2f5;
 }
 
 .app-header h1 {
   color: #2e7d32;
-  font-size: 22px;
+  font-size: 16px;
   font-weight: 700;
   margin: 0;
-  letter-spacing: -0.5px;
+  letter-spacing: -0.3px;
 }
 
 /* === 紧凑的筛选区域设计 === */
 .filter-section {
-  margin-bottom: 14px;
+  margin-bottom: 8px;
   overflow: visible !important;
   position: static;
 }
@@ -84,96 +77,134 @@ body {
 /* 统一的筛选容器 */
 .unified-filter-group {
   background: linear-gradient(135deg, #f8fafb 0%, #ffffff 100%);
-  border-radius: 12px;
-  padding: 16px;
+  border-radius: 8px;
+  padding: 10px;
   border: 1px solid #e5e8eb;
-  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.08);
+  box-shadow: 0 2px 6px rgba(76, 175, 80, 0.05);
 }
 
 /* 筛选状态显示 */
 .filter-status {
   background-color: #e8f5e8;
   color: #2e7d32;
-  padding: 8px 12px;
-  border-radius: 6px;
-  font-size: 13px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 11px;
   font-weight: 500;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
   border-left: 3px solid #4caf50;
 }
 
 /* 筛选项目 */
 .filter-item {
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .filter-item:last-child {
   margin-bottom: 0;
 }
 
-/* === Flatpickr 日期筛选器设计 === */
+/* === 日期筛选器设计 === */
 .date-filter-container {
   background: linear-gradient(135deg, #f8fffe 0%, #ffffff 100%);
-  border-radius: 12px;
-  padding: 16px;
+  border-radius: 6px;
+  padding: 8px;
   border: 1px solid #e8f0e8;
-  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.06);
+  box-shadow: 0 1px 4px rgba(76, 175, 80, 0.05);
 }
 
-/* Flatpickr 容器样式 */
-.flatpickr-container {
+/* 日期输入容器 */
+.date-input-container {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 6px;
 }
 
-.flatpickr-input {
-  width: 100%;
-  padding: 12px 16px;
-  border: 2px solid #e8f5e9;
-  border-radius: 12px;
-  font-size: 14px;
+/* 日期输入行 - 单行紧凑布局 */
+.date-input-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* 连接词样式 */
+.date-separator {
+  font-size: 12px;
+  font-weight: 600;
   color: #2e7d32;
-  background: #ffffff;
-  cursor: pointer;
+  margin: 0 2px;
+}
+
+/* 日期输入框 - 紧凑样式 */
+.date-input {
+  width: 110px;
+  padding: 6px 8px;
+  border: 1px solid #e8f5e9;
+  border-radius: 4px;
+  font-size: 11px;
+  background-color: #ffffff;
+  color: #2e7d32;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-sizing: border-box;
+  font-family: inherit;
+  cursor: pointer;
 }
 
-.flatpickr-input:hover {
+/* 日期输入框无效状态 */
+.date-input:invalid {
+  border-color: #f44336;
+  background-color: #ffeaea;
+}
+
+/* 日期输入框错误提示 */
+.date-input.error {
+  border-color: #f44336;
+  background-color: #ffeaea;
+}
+
+.date-input:hover {
   border-color: #4caf50;
   box-shadow: 0 2px 8px rgba(76, 175, 80, 0.1);
 }
 
-.flatpickr-input:focus {
+.date-input:focus {
   outline: none;
   border-color: #4caf50;
-  box-shadow: 0 0 0 4px rgba(76, 175, 80, 0.1), 0 4px 12px rgba(76, 175, 80, 0.15);
+  box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+  background-color: #f8fffe;
 }
 
-.flatpickr-input::placeholder {
+.date-input::placeholder {
   color: #999;
+  font-style: italic;
 }
+
+
 
 /* 快捷日期按钮 */
 .quick-date-buttons {
   display: flex;
-  gap: 8px;
+  gap: 3px;
   flex-wrap: wrap;
+  margin-top: 4px;
+  width: 100%;
 }
 
 .quick-date-btn {
-  padding: 8px 12px;
+  padding: 4px 6px;
   border: 1px solid #e8f5e9;
-  border-radius: 6px;
+  border-radius: 3px;
   background-color: #ffffff;
   color: #2e7d32;
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   text-align: center;
   white-space: nowrap;
+  flex: 1;
 }
 
 .quick-date-btn:hover {
@@ -190,85 +221,32 @@ body {
   box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
 }
 
-/* Flatpickr 自定义样式 */
-.flatpickr-calendar {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  box-shadow: 0 8px 32px rgba(76, 175, 80, 0.15);
-  border: 1px solid #e8f5e9;
-}
 
-.flatpickr-month {
-  background: linear-gradient(135deg, #f8fffe 0%, #f1f8e9 100%);
-  color: #2e7d32;
-}
-
-.flatpickr-weekdays {
-  background: #f8fffe;
-}
-
-.flatpickr-weekday {
-  color: #4caf50;
-  font-weight: 600;
-}
-
-.flatpickr-day {
-  color: #333;
-  border-radius: 6px;
-  transition: all 0.3s ease;
-}
-
-.flatpickr-day:hover {
-  background-color: #f1f8e9;
-  border-color: #4caf50;
-}
-
-.flatpickr-day.selected {
-  background-color: #4caf50;
-  border-color: #4caf50;
-}
-
-.flatpickr-day.inRange {
-  background-color: #e8f5e9;
-  border-color: #4caf50;
-  color: #2e7d32;
-}
-
-.flatpickr-day.startRange,
-.flatpickr-day.endRange {
-  background-color: #4caf50;
-  border-color: #4caf50;
-  color: white;
-}
-
-.flatpickr-day.today {
-  border-color: #ff9800;
-  color: #ff9800;
-}
 
 /* === 整合标签选择组件 === */
 .tag-integrated-container {
   background-color: #ffffff;
-  padding: 14px;
-  border-radius: 10px;
+  padding: 8px;
+  border-radius: 6px;
   border: 1px solid #e8f0e8;
-  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.06);
+  box-shadow: 0 1px 4px rgba(76, 175, 80, 0.05);
 }
 
 .tag-input-area {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .tag-dropdown-compact {
   flex: 1;
-  padding: 8px 12px;
-  border: 2px solid #e8f0e8;
-  border-radius: 6px;
+  padding: 6px 8px;
+  border: 1px solid #e8f0e8;
+  border-radius: 4px;
   background-color: #ffffff;
   color: #333;
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -276,9 +254,9 @@ body {
   appearance: none;
   background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234caf50' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
   background-repeat: no-repeat;
-  background-position: right 10px center;
-  background-size: 14px;
-  padding-right: 32px;
+  background-position: right 6px center;
+  background-size: 12px;
+  padding-right: 24px;
 }
 
 .tag-dropdown-compact:focus {

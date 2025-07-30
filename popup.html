@@ -3,251 +3,9 @@
 <head>
   <title>语雀小记导出器</title>
   <link rel="stylesheet" type="text/css" href="styles.css">
-  <!-- Flatpickr CSS - 本地文件 -->
-  <link rel="stylesheet" href="flatpickr.min.css">
   <link rel="stylesheet" href="material_green.css">
   <meta charset="UTF-8">
-  <style>
-/* === Flatpickr 完全自定义样式 - 绿色生态系统 === */
 
-/* 主容器 */
-.flatpickr-calendar {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
-  background: #ffffff !important;
-  border: 1px solid #e8f5e9 !important;
-  border-radius: 12px !important;
-  box-shadow: 0 8px 32px rgba(76, 175, 80, 0.15) !important;
-  overflow: hidden !important;
-  /* 关键：确保日历显示在最上层 */
-  z-index: 999999 !important;
-  position: fixed !important;
-  /* 居中显示 */
-  top: 50% !important;
-  left: 50% !important;
-  transform: translate(-50%, -50%) !important;
-}
-
-/* 确保日历容器不受父容器overflow限制 */
-.flatpickr-calendar.open {
-  position: fixed !important;
-  z-index: 999999 !important;
-  top: 50% !important;
-  left: 50% !important;
-  transform: translate(-50%, -50%) !important;
-}
-
-/* 月份头部 */
-.flatpickr-month {
-  background: linear-gradient(135deg, #f8fffe 0%, #f1f8e9 100%) !important;
-  color: #2e7d32 !important;
-  height: 48px !important;
-  padding: 0 16px !important;
-  border-radius: 12px 12px 0 0 !important;
-  border-bottom: 1px solid #e8f5e9 !important;
-}
-
-.flatpickr-current-month {
-  color: #2e7d32 !important;
-  font-weight: 600 !important;
-  font-size: 16px !important;
-}
-
-.flatpickr-current-month input.cur-year {
-  color: #2e7d32 !important;
-  font-weight: 600 !important;
-  background: transparent !important;
-  border: none !important;
-}
-
-.flatpickr-current-month .flatpickr-monthDropdown-months {
-  background: #ffffff !important;
-  color: #2e7d32 !important;
-  font-weight: 600 !important;
-  border: 1px solid #e8f5e9 !important;
-  border-radius: 6px !important;
-}
-
-/* 月份导航按钮 */
-.flatpickr-prev-month,
-.flatpickr-next-month {
-  color: #4caf50 !important;
-  width: 32px !important;
-  height: 32px !important;
-  border-radius: 6px !important;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-  background: transparent !important;
-  border: 1px solid transparent !important;
-}
-
-.flatpickr-prev-month:hover,
-.flatpickr-next-month:hover {
-  background-color: #f1f8e9 !important;
-  border-color: #4caf50 !important;
-  transform: translateY(-1px) !important;
-  color: #2e7d32 !important;
-  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.15) !important;
-}
-
-.flatpickr-prev-month svg,
-.flatpickr-next-month svg {
-  fill: currentColor !important;
-}
-
-/* 星期标题 */
-.flatpickr-weekdays {
-  background: #f8fffe !important;
-  padding: 12px 8px 8px 8px !important;
-  border-bottom: 1px solid #e8f5e9 !important;
-}
-
-.flatpickr-weekday {
-  background: transparent !important;
-  color: #4caf50 !important;
-  font-weight: 600 !important;
-  font-size: 12px !important;
-  text-transform: uppercase !important;
-  padding: 8px 4px !important;
-}
-
-/* 日期单元格 */
-.flatpickr-day {
-  background: transparent !important;
-  color: #333 !important;
-  border: 1px solid transparent !important;
-  border-radius: 8px !important;
-  font-size: 13px !important;
-  font-weight: 500 !important;
-  width: 32px !important;
-  height: 32px !important;
-  line-height: 30px !important;
-  margin: 2px !important;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-  cursor: pointer !important;
-}
-
-/* 悬停效果 */
-.flatpickr-day:hover {
-  background-color: #f1f8e9 !important;
-  border-color: #4caf50 !important;
-  color: #2e7d32 !important;
-  transform: translateY(-1px) !important;
-  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.15) !important;
-}
-
-/* 其他月份的日期 */
-.flatpickr-day.prevMonthDay,
-.flatpickr-day.nextMonthDay {
-  color: #bdbdbd !important;
-  background: transparent !important;
-}
-
-.flatpickr-day.prevMonthDay:hover,
-.flatpickr-day.nextMonthDay:hover {
-  background-color: #f5f5f5 !important;
-  border-color: #e0e0e0 !important;
-  color: #999 !important;
-  transform: none !important;
-  box-shadow: none !important;
-}
-
-/* 今天 */
-.flatpickr-day.today {
-  border-color: #ff9800 !important;
-  color: #ff9800 !important;
-  font-weight: 600 !important;
-  background: rgba(255, 152, 0, 0.1) !important;
-}
-
-.flatpickr-day.today:hover {
-  background-color: rgba(255, 152, 0, 0.2) !important;
-  border-color: #ff9800 !important;
-  color: #ff9800 !important;
-  transform: translateY(-1px) !important;
-  box-shadow: 0 2px 8px rgba(255, 152, 0, 0.15) !important;
-}
-
-/* 选中的日期 */
-.flatpickr-day.selected {
-  background: linear-gradient(135deg, #4caf50 0%, #45a049 100%) !important;
-  border-color: #4caf50 !important;
-  color: white !important;
-  font-weight: 600 !important;
-  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3) !important;
-}
-
-.flatpickr-day.selected:hover {
-  background: linear-gradient(135deg, #45a049 0%, #388e3c 100%) !important;
-  border-color: #45a049 !important;
-  transform: translateY(-1px) !important;
-  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4) !important;
-}
-
-/* 范围内的日期 */
-.flatpickr-day.inRange {
-  background-color: #e8f5e9 !important;
-  border-color: #4caf50 !important;
-  color: #2e7d32 !important;
-  font-weight: 500 !important;
-  border-radius: 4px !important;
-}
-
-.flatpickr-day.inRange:hover {
-  background-color: #c8e6c9 !important;
-  border-color: #4caf50 !important;
-  color: #2e7d32 !important;
-  transform: translateY(-1px) !important;
-  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.15) !important;
-}
-
-/* 范围开始和结束 */
-.flatpickr-day.startRange,
-.flatpickr-day.endRange {
-  background: linear-gradient(135deg, #4caf50 0%, #45a049 100%) !important;
-  border-color: #4caf50 !important;
-  color: white !important;
-  font-weight: 600 !important;
-  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3) !important;
-  border-radius: 8px !important;
-}
-
-.flatpickr-day.startRange:hover,
-.flatpickr-day.endRange:hover {
-  background: linear-gradient(135deg, #45a049 0%, #388e3c 100%) !important;
-  border-color: #45a049 !important;
-  transform: translateY(-1px) !important;
-  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4) !important;
-}
-
-/* 双月显示调整 */
-.flatpickr-calendar.showTimeInput {
-  min-width: 600px !important;
-}
-
-/* 动画效果 */
-.flatpickr-calendar.animate.open {
-  animation: flatpickrFadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-@keyframes flatpickrFadeIn {
-  from {
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
-  }
-}
-
-/* 确保日历显示在插件窗口之上 */
-body .flatpickr-calendar {
-  z-index: 999999 !important;
-  position: fixed !important;
-  top: 50% !important;
-  left: 50% !important;
-  transform: translate(-50%, -50%) !important;
-}
-</style>
 </head>
 <body>
   <div class="container">
@@ -264,9 +22,13 @@ body .flatpickr-calendar {
         <!-- 日期筛选 -->
         <div class="filter-item">
           <div class="date-filter-container">
-            <!-- Flatpickr 日期范围选择器 -->
-            <div class="flatpickr-container">
-              <input type="text" id="dateRangePicker" class="flatpickr-input" placeholder="选择日期范围..." readonly>
+            <!-- 直接输入日期范围 -->
+            <div class="date-input-container">
+              <div class="date-input-row">
+                <input type="date" id="startDateInput" class="date-input" placeholder="YYYY-MM-DD">
+                <span class="date-separator">至</span>
+                <input type="date" id="endDateInput" class="date-input" placeholder="YYYY-MM-DD">
+              </div>
               <div class="quick-date-buttons">
                 <button type="button" class="quick-date-btn" data-period="week">最近一周</button>
                 <button type="button" class="quick-date-btn" data-period="month">最近一个月</button>
@@ -275,7 +37,7 @@ body .flatpickr-calendar {
               </div>
             </div>
             
-            <!-- 隐藏的日期输入框 -->
+            <!-- 隐藏的日期输入框（保持兼容性） -->
             <input type="hidden" id="startDate">
             <input type="hidden" id="endDate">
           </div>
@@ -336,9 +98,6 @@ body .flatpickr-calendar {
     </section>
   </div>
   
-  <!-- Flatpickr JS - 本地文件 -->
-  <script src="flatpickr.min.js"></script>
-  <script src="zh.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

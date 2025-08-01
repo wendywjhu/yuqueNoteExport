@@ -5,11 +5,11 @@ body {
   padding: 0;
   background-color: #f5f7fa;
   color: #333;
-  font-size: 12px;
+  font-size: 11px;
   line-height: 1.4;
   /* 设置body固定高度和宽度，适应弹窗限制 */
   width: 310px;
-  height: 400px;
+  height: 420px;
   overflow: hidden;
 }
 
@@ -23,12 +23,14 @@ body {
   /* 移除圆角和阴影，让内容填满弹窗 */
   border-radius: 0;
   box-shadow: none;
-  /* 允许滚动查看所有内容 */
-  overflow-y: auto;
+  /* 禁用滚动，让所有内容在一屏内显示 */
+  overflow: hidden;
   box-sizing: border-box;
   /* 关键：确保不会限制子元素的z-index */
   position: relative;
   z-index: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 
@@ -57,11 +59,12 @@ body {
   margin-bottom: 8px;
   padding-bottom: 6px;
   border-bottom: 1px solid #f0f2f5;
+  flex-shrink: 0;
 }
 
 .app-header h1 {
   color: #2e7d32;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 700;
   margin: 0;
   letter-spacing: -0.3px;
@@ -72,6 +75,9 @@ body {
   margin-bottom: 8px;
   overflow: visible !important;
   position: static;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 /* 统一的筛选容器 */
@@ -80,7 +86,10 @@ body {
   border-radius: 8px;
   padding: 10px;
   border: 1px solid #e5e8eb;
-  box-shadow: 0 2px 6px rgba(76, 175, 80, 0.05);
+  box-shadow: 0 2px 6px rgba(76, 175, 80, 0.06);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 /* 筛选状态显示 */
@@ -89,10 +98,12 @@ body {
   color: #2e7d32;
   padding: 6px 8px;
   border-radius: 4px;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 500;
   margin-bottom: 8px;
-  border-left: 3px solid #4caf50;
+  border-left: 2px solid #4caf50;
+  line-height: 1.2;
+  text-align: center;
 }
 
 /* 筛选项目 */
@@ -110,36 +121,37 @@ body {
   border-radius: 6px;
   padding: 8px;
   border: 1px solid #e8f0e8;
-  box-shadow: 0 1px 4px rgba(76, 175, 80, 0.05);
+  box-shadow: 0 1px 4px rgba(76, 175, 80, 0.04);
 }
 
 /* 日期输入容器 */
 .date-input-container {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 /* 日期输入行 - 单行紧凑布局 */
 .date-input-row {
   display: flex;
   align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
+  gap: 8px;
+  flex-wrap: nowrap;
   justify-content: center;
 }
 
 /* 连接词样式 */
 .date-separator {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   color: #2e7d32;
-  margin: 0 2px;
+  margin: 0 3px;
+  white-space: nowrap;
 }
 
 /* 日期输入框 - 紧凑样式 */
 .date-input {
-  width: 110px;
+  width: 90px;
   padding: 6px 8px;
   border: 1px solid #e8f5e9;
   border-radius: 4px;
@@ -183,28 +195,28 @@ body {
 
 
 
-/* 快捷日期按钮 */
+/* 快捷日期按钮 - 2x2网格布局 */
 .quick-date-buttons {
-  display: flex;
-  gap: 3px;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
   margin-top: 4px;
   width: 100%;
 }
 
 .quick-date-btn {
-  padding: 4px 6px;
+  padding: 6px 8px;
   border: 1px solid #e8f5e9;
-  border-radius: 3px;
+  border-radius: 4px;
   background-color: #ffffff;
   color: #2e7d32;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   text-align: center;
   white-space: nowrap;
-  flex: 1;
+  min-width: 0;
 }
 
 .quick-date-btn:hover {
@@ -229,12 +241,12 @@ body {
   padding: 8px;
   border-radius: 6px;
   border: 1px solid #e8f0e8;
-  box-shadow: 0 1px 4px rgba(76, 175, 80, 0.05);
+  box-shadow: 0 1px 4px rgba(76, 175, 80, 0.04);
 }
 
 .tag-input-area {
   display: flex;
-  gap: 6px;
+  gap: 4px;
   align-items: center;
   margin-bottom: 6px;
 }
@@ -255,8 +267,8 @@ body {
   background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234caf50' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
   background-repeat: no-repeat;
   background-position: right 6px center;
-  background-size: 12px;
-  padding-right: 24px;
+  background-size: 10px;
+  padding-right: 20px;
 }
 
 .tag-dropdown-compact:focus {
@@ -266,12 +278,12 @@ body {
 }
 
 .clear-tags-btn {
-  padding: 6px 12px;
+  padding: 4px 8px;
   background-color: #f5f5f5;
   border: 1px solid #ddd;
-  border-radius: 4px;
+  border-radius: 3px;
   color: #666;
-  font-size: 12px;
+  font-size: 10px;
   cursor: pointer;
   transition: all 0.3s ease;
 }
@@ -292,9 +304,9 @@ body {
 .selected-tags-chips:empty::after {
   content: "未选择标签";
   color: #999;
-  font-size: 12px;
+  font-size: 10px;
   font-style: italic;
-  padding: 4px 0;
+  padding: 2px 0;
   display: block;
 }
 
@@ -304,7 +316,7 @@ body {
   border-radius: 8px;
   background-color: #ffffff;
   color: #333;
-  font-size: 14px;
+  font-size: 11px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -360,7 +372,7 @@ body {
   border-radius: 8px;
   background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
   color: white;
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -397,9 +409,10 @@ body {
 
 .filter-actions {
   display: flex;
-  gap: 10px;
-  margin-top: 16px;
+  gap: 4px;
+  margin-top: 8px;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .selected-tags-container {
@@ -414,7 +427,7 @@ body {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 8px;
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 600;
   color: #2e7d32;
 }
@@ -428,11 +441,11 @@ body {
 .tag-chip {
   display: inline-flex;
   align-items: center;
-  padding: 3px 8px;
+  padding: 2px 6px;
   background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
   color: white;
-  border-radius: 10px;
-  font-size: 11px;
+  border-radius: 8px;
+  font-size: 10px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -472,11 +485,11 @@ body {
 .btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 10px 16px;
+  gap: 3px;
+  padding: 6px 10px;
   border: none;
-  border-radius: 8px;
-  font-size: 13px;
+  border-radius: 4px;
+  font-size: 11px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -484,6 +497,13 @@ body {
   white-space: nowrap;
   position: relative;
   overflow: hidden;
+  flex: 1;
+  text-align: center;
+  justify-content: center;
+}
+
+.btn-icon {
+  font-size: 11px;
 }
 
 .btn::before {
@@ -538,7 +558,7 @@ body {
 }
 
 .btn-icon {
-  font-size: 14px;
+  font-size: 11px;
 }
 
 .btn:disabled {
@@ -568,7 +588,7 @@ body {
   
   .quick-date-btn {
     padding: 8px 12px;
-    font-size: 12px;
+    font-size: 11px;
   }
   
   .date-input-group {
@@ -600,24 +620,25 @@ body {
 
 /* === 紧凑导出格式选项样式 === */
 .export-format-section {
-  margin-top: 12px;
-  padding: 8px 0;
+  margin-top: 6px;
+  padding: 6px 0;
   border-top: 1px solid #e8f5e9;
 }
 
 .compact-label {
-  font-size: 13px;
+  font-size: 10px;
   color: #666;
   font-weight: 500;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
   display: block;
 }
 
 .export-format-options {
   display: flex;
-  gap: 16px;
+  gap: 8px;
   align-items: center;
   flex-wrap: wrap;
+  justify-content: center;
 }
 
 .compact-checkbox {
@@ -625,10 +646,10 @@ body {
   align-items: center;
   cursor: pointer;
   transition: all 0.3s ease;
-  font-size: 13px;
+  font-size: 10px;
   color: #555;
-  padding: 2px 4px;
-  border-radius: 4px;
+  padding: 1px 2px;
+  border-radius: 3px;
 }
 
 .compact-checkbox:hover {
@@ -647,12 +668,12 @@ body {
 .mini-checkmark {
   position: relative;
   display: inline-block;
-  width: 14px;
-  height: 14px;
+  width: 10px;
+  height: 10px;
   background-color: #fff;
-  border: 1.5px solid #ddd;
-  border-radius: 3px;
-  margin-right: 6px;
+  border: 1px solid #ddd;
+  border-radius: 2px;
+  margin-right: 4px;
   transition: all 0.3s ease;
 }
 

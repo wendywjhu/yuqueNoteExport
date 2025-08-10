@@ -7,19 +7,21 @@ let selectedEndDate = null;
 
 // DOM元素引用
 const elements = {
-  tagSelect: document.getElementById('tagSelect'),
+  tagSelectButton: document.getElementById('tagSelectButton'),
+  tagSelectText: document.getElementById('tagSelectText'),
+  tagDropdown: document.getElementById('tagDropdown'),
+  tagOptionsList: document.getElementById('tagOptionsList'),
   startDate: document.getElementById('startDate'),
   endDate: document.getElementById('endDate'),
   startDateInput: document.getElementById('startDateInput'),
   endDateInput: document.getElementById('endDateInput'),
-  selectedTagsList: document.getElementById('selectedTagsList'),
+  quickDateSelect: document.getElementById('quickDateSelect'),
   selectAllTags: document.getElementById('selectAllTags'),
   clearTags: document.getElementById('clearTags'),
   fetchNotes: document.getElementById('fetchNotes'),
   resetFilters: document.getElementById('resetFilters'),
   exportNotes: document.getElementById('exportNotes'),
-  filterStatus: document.getElementById('filterStatus'),
-  quickDateBtns: document.querySelectorAll('.quick-date-btn')
+  filterStatus: document.getElementById('filterStatus')
 };
 
 // 初始化日期输入框
@@ -49,12 +51,13 @@ function initializeDateInputs() {
   elements.endDateInput.addEventListener('change', handleDateInputChange);
   elements.endDateInput.addEventListener('blur', handleDateInputChange);
   
-  // 添加快捷按钮事件监听器
-  elements.quickDateBtns.forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      const period = e.target.dataset.period;
+  // 添加快捷日期选择事件监听器
+  elements.quickDateSelect.addEventListener('change', (e) => {
+    const period = e.target.value;
+    if (period) {
       selectQuickDate(period);
-    });
+      // 不重置下拉框，保持显示选中的选项
+    }
   });
   
   console.log('日期输入框初始化完成');
@@ -99,8 +102,8 @@ function handleDateInputChange(event) {
   selectedStartDate = startDateStr ? new Date(startDateStr) : null;
   selectedEndDate = endDateStr ? new Date(endDateStr) : null;
   
-  // 清除快捷按钮的active状态
-  elements.quickDateBtns.forEach(btn => btn.classList.remove('active'));
+  // 重置快捷选择状态  
+  elements.quickDateSelect.value = '';
   currentDateMode = null;
   
   console.log('日期更新完成:', { selectedStartDate, selectedEndDate });
@@ -146,8 +149,7 @@ function selectQuickDate(period) {
   const today = new Date();
   let startDate, endDate;
   
-  // 清除之前的 active 状态
-  elements.quickDateBtns.forEach(btn => btn.classList.remove('active'));
+  // 清除快捷选择状态 (不再需要按钮状态管理)
   
   switch (period) {
     case 'week':
@@ -166,7 +168,7 @@ function selectQuickDate(period) {
       currentDateMode = '3months';
       break;
     case 'clear':
-      console.log('清除日期');
+      console.log('选择全部时间');
       currentDateMode = null;
       selectedStartDate = null;
       selectedEndDate = null;
@@ -196,8 +198,7 @@ function selectQuickDate(period) {
   selectedStartDate = startDate;
   selectedEndDate = endDate;
   
-  // 设置对应按钮为 active
-  document.querySelector(`[data-period="${period}"]`).classList.add('active');
+  // 快捷选择完成 (下拉框会自动重置)
   
   console.log('快捷日期设置完成');
   console.log('selectedStartDate:', selectedStartDate);
@@ -259,81 +260,94 @@ function showFilterStatus(message) {
 // 显示标签列表
 function displayTags(tags) {
   availableTags = tags;
-  
-  // 清空现有选项，保留默认选项
-  elements.tagSelect.innerHTML = '<option value="">选择标签...</option>';
-  
-  // 添加无标签选项
-  const noTagOption = document.createElement('option');
-  noTagOption.value = '__NO_TAG__';
-  noTagOption.textContent = '无标签';
-  elements.tagSelect.appendChild(noTagOption);
-  
-  if (tags.length === 0) {
-    const option = document.createElement('option');
-    option.value = '';
-    option.disabled = true;
-    option.textContent = '暂无标签';
-    elements.tagSelect.appendChild(option);
-  } else {
-    tags.forEach(tag => {
-      const option = document.createElement('option');
-      option.value = tag;
-      option.textContent = tag;
-      elements.tagSelect.appendChild(option);
-    });
-  }
-  
-  // 更新全选按钮的显示状态
-  updateSelectAllButtonDisplay();
+  renderTagOptions();
+  updateTagSelectText();
 }
 
-// 标签选择改变事件
-elements.tagSelect.addEventListener('change', (e) => {
-  const selectedTag = e.target.value;
+// 渲染标签选项
+function renderTagOptions() {
+  elements.tagOptionsList.innerHTML = '';
   
-  if (selectedTag && !selectedTags.includes(selectedTag)) {
-    selectedTags.push(selectedTag);
-    updateSelectedTagsDisplay();
-    // 重置选择框
-    elements.tagSelect.value = '';
-  }
-});
-
-// 更新选中标签显示
-function updateSelectedTagsDisplay() {
-  // 清空标签列表
-  elements.selectedTagsList.innerHTML = '';
+  // 添加无标签选项
+  const noTagItem = createTagOptionItem('__NO_TAG__', '无标签');
+  elements.tagOptionsList.appendChild(noTagItem);
   
-  // 显示/隐藏按钮
-  if (selectedTags.length === 0) {
-    elements.selectAllTags.style.display = 'none';
-    elements.clearTags.style.display = 'none';
+  if (availableTags.length === 0) {
+    const emptyItem = document.createElement('div');
+    emptyItem.className = 'tag-option-item';
+    emptyItem.style.color = '#999';
+    emptyItem.textContent = '暂无标签';
+    elements.tagOptionsList.appendChild(emptyItem);
   } else {
-    elements.selectAllTags.style.display = 'inline-block';
-    elements.clearTags.style.display = 'inline-block';
-    
-    // 创建标签芯片
-    selectedTags.forEach(tag => {
-      const tagChip = document.createElement('span');
-      tagChip.className = 'tag-chip';
-      tagChip.setAttribute('data-tag', tag);
-      // 如果是无标签选项，显示特殊文本
-      tagChip.textContent = tag === '__NO_TAG__' ? '无标签' : tag;
-      tagChip.title = '点击删除';
-      
-      // 添加删除功能
-      tagChip.addEventListener('click', () => {
-        selectedTags = selectedTags.filter(t => t !== tag);
-        updateSelectedTagsDisplay();
-      });
-      
-      elements.selectedTagsList.appendChild(tagChip);
+    availableTags.forEach(tag => {
+      const tagItem = createTagOptionItem(tag, tag);
+      elements.tagOptionsList.appendChild(tagItem);
     });
   }
+}
+
+// 创建标签选项元素
+function createTagOptionItem(value, text) {
+  const item = document.createElement('div');
+  item.className = 'tag-option-item';
+  item.dataset.value = value;
   
-  // 更新全选按钮的显示状态
-  updateSelectAllButtonDisplay();
+  const checkbox = document.createElement('div');
+  checkbox.className = 'tag-option-checkbox';
+  
+  const label = document.createElement('span');
+  label.textContent = text;
+  
+  item.appendChild(checkbox);
+  item.appendChild(label);
+  
+  // 点击选中/取消选中
+  item.addEventListener('click', () => {
+    toggleTagSelection(value);
+  });
+  
+  return item;
+}
+
+// 切换标签选中状态
+function toggleTagSelection(tagValue) {
+  if (selectedTags.includes(tagValue)) {
+    selectedTags = selectedTags.filter(tag => tag !== tagValue);
+  } else {
+    selectedTags.push(tagValue);
+  }
+  updateTagOptionDisplay();
+  updateTagSelectText();
+}
+
+// 更新标签选项显示状态
+function updateTagOptionDisplay() {
+  const items = elements.tagOptionsList.querySelectorAll('.tag-option-item');
+  items.forEach(item => {
+    const value = item.dataset.value;
+    const checkbox = item.querySelector('.tag-option-checkbox');
+    const isSelected = selectedTags.includes(value);
+    
+    if (isSelected) {
+      item.classList.add('selected');
+      checkbox.classList.add('checked');
+    } else {
+      item.classList.remove('selected');
+      checkbox.classList.remove('checked');
+    }
+  });
+}
+
+// 更新标签选择按钮的显示文本
+function updateTagSelectText() {
+  if (selectedTags.length === 0) {
+    elements.tagSelectText.textContent = '选择标签...';
+  } else if (selectedTags.length === 1) {
+    const tagName = selectedTags[0] === '__NO_TAG__' ? '无标签' : selectedTags[0];
+    elements.tagSelectText.textContent = tagName;
+  } else {
+    elements.tagSelectText.textContent = `已选择 ${selectedTags.length} 个标签`;
+  }
 }
 
 // 更新全选按钮的显示状态
@@ -359,8 +373,45 @@ function updateSelectAllButtonDisplay() {
   }
 }
 
+// 标签选择按钮点击事件
+elements.tagSelectButton.addEventListener('click', (e) => {
+  e.stopPropagation();
+  toggleDropdown();
+});
+
+// 切换下拉菜单显示/隐藏
+function toggleDropdown() {
+  const isOpen = elements.tagDropdown.style.display !== 'none';
+  if (isOpen) {
+    closeDropdown();
+  } else {
+    openDropdown();
+  }
+}
+
+// 打开下拉菜单
+function openDropdown() {
+  elements.tagDropdown.style.display = 'block';
+  elements.tagSelectButton.classList.add('open');
+  updateTagOptionDisplay();
+}
+
+// 关闭下拉菜单
+function closeDropdown() {
+  elements.tagDropdown.style.display = 'none';
+  elements.tagSelectButton.classList.remove('open');
+}
+
+// 点击页面其他地方关闭下拉菜单
+document.addEventListener('click', (e) => {
+  if (!elements.tagSelectButton.contains(e.target) && !elements.tagDropdown.contains(e.target)) {
+    closeDropdown();
+  }
+});
+
 // 全选标签
-elements.selectAllTags.addEventListener('click', () => {
+elements.selectAllTags.addEventListener('click', (e) => {
+  e.stopPropagation();
   // 计算所有可选择的标签（包括"无标签"选项）
   const allSelectableTags = ['__NO_TAG__', ...availableTags];
   const allSelected = allSelectableTags.every(tag => selectedTags.includes(tag));
@@ -373,19 +424,24 @@ elements.selectAllTags.addEventListener('click', () => {
     selectedTags = [...allSelectableTags];
   }
   
-  updateSelectedTagsDisplay();
+  updateTagOptionDisplay();
+  updateTagSelectText();
 });
 
 // 清空标签选择
-elements.clearTags.addEventListener('click', () => {
+elements.clearTags.addEventListener('click', (e) => {
+  e.stopPropagation();
   selectedTags = [];
-  updateSelectedTagsDisplay();
+  updateTagOptionDisplay();
+  updateTagSelectText();
 });
 
 // 重置筛选
 elements.resetFilters.addEventListener('click', () => {
   selectedTags = [];
-  updateSelectedTagsDisplay();
+  updateTagOptionDisplay();
+  updateTagSelectText();
+  closeDropdown();
   
   // 重置日期相关状态
   currentDateMode = null;
@@ -396,8 +452,8 @@ elements.resetFilters.addEventListener('click', () => {
   elements.startDate.value = '';
   elements.endDate.value = '';
   
-  // 移除所有快捷按钮的active状态
-  elements.quickDateBtns.forEach(btn => btn.classList.remove('active'));
+  // 重置快捷日期选择下拉框
+  elements.quickDateSelect.value = '';
   
   // 禁用导出按钮
   elements.exportNotes.disabled = true;

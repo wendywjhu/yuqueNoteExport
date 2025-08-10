@@ -19,41 +19,46 @@
         <!-- 状态显示区域 -->
         <div id="filterStatus" class="filter-status" style="display:none;"></div>
         
-        <!-- 日期筛选 -->
+        <!-- 时间和标签筛选（合并行） -->
         <div class="filter-item">
-          <div class="date-filter-container">
-            <!-- 直接输入日期范围 -->
-            <div class="date-input-container">
-              <div class="date-input-row">
-                <input type="date" id="startDateInput" class="date-input" placeholder="YYYY-MM-DD">
-                <span class="date-separator">至</span>
-                <input type="date" id="endDateInput" class="date-input" placeholder="YYYY-MM-DD">
-              </div>
-              <div class="quick-date-buttons">
-                <button type="button" class="quick-date-btn" data-period="week">最近一周</button>
-                <button type="button" class="quick-date-btn" data-period="month">最近一个月</button>
-                <button type="button" class="quick-date-btn" data-period="3months">最近三个月</button>
-                <button type="button" class="quick-date-btn" data-period="clear">清除</button>
-              </div>
+          <div class="combined-filter-container">
+            <!-- 时间选择 -->
+            <div class="time-select-section">
+              <select id="quickDateSelect" class="quick-date-select-compact">
+                <option value="">选择时间范围...</option>
+                <option value="week">最近一周</option>
+                <option value="month">最近一个月</option>
+                <option value="3months">最近三个月</option>
+                <option value="clear">全部时间</option>
+              </select>
             </div>
             
-            <!-- 隐藏的日期输入框（保持兼容性） -->
+            <!-- 标签选择 -->
+            <div class="tag-select-section">
+              <div class="tag-input-area">
+                <div id="tagSelectButton" class="tag-select-button">
+                  <span id="tagSelectText">选择标签...</span>
+                  <span class="dropdown-arrow">▼</span>
+                </div>
+                <div id="tagDropdown" class="tag-dropdown-menu" style="display:none;">
+                  <div class="tag-dropdown-header">
+                    <button id="selectAllTags" class="tag-action-btn">全选</button>
+                    <button id="clearTags" class="tag-action-btn">清空</button>
+                  </div>
+                  <div id="tagOptionsList" class="tag-options-list">
+                    <!-- 标签选项会动态添加到这里 -->
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 隐藏的日期输入框（保持兼容性） -->
+          <div style="display: none;">
+            <input type="date" id="startDateInput" class="date-input">
+            <input type="date" id="endDateInput" class="date-input">
             <input type="hidden" id="startDate">
             <input type="hidden" id="endDate">
-          </div>
-        </div>
-      
-        <!-- 标签筛选 -->
-        <div class="filter-item">
-          <div class="tag-integrated-container">
-            <div class="tag-input-area">
-              <select id="tagSelect" class="tag-dropdown-compact">
-                <option value="">选择标签...</option>
-              </select>
-              <button id="selectAllTags" class="select-all-tags-btn" style="display:none;">全选</button>
-              <button id="clearTags" class="clear-tags-btn" style="display:none;">清空</button>
-            </div>
-            <div id="selectedTagsList" class="selected-tags-chips"></div>
           </div>
         </div>
         

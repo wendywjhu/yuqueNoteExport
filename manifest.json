@@ -2,7 +2,7 @@
   "manifest_version": 3,
     "name": "语雀小记导出器",
     "version": "1.0",
-    "description": "支持将您的语雀小记按日期、标签筛选导出为 Markdown 格式",
+    "description": "支持将您的语雀小记按标题、日期、标签筛选导出为 Markdown 格式",
     "permissions": [
       "cookies",
     "storage",

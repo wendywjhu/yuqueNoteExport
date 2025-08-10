@@ -21,7 +21,10 @@ const elements = {
   fetchNotes: document.getElementById('fetchNotes'),
   resetFilters: document.getElementById('resetFilters'),
   exportNotes: document.getElementById('exportNotes'),
-  filterStatus: document.getElementById('filterStatus')
+  filterStatus: document.getElementById('filterStatus'),
+  contactAuthor: document.getElementById('contactAuthor'),
+  contactModal: document.getElementById('contactModal'),
+  modalClose: document.querySelector('.modal-close')
 };
 
 // 初始化日期输入框
@@ -609,6 +612,12 @@ document.addEventListener('DOMContentLoaded', () => {
   // 禁用导出按钮（初始状态）
   elements.exportNotes.disabled = true;
   
+  // 显示初始引导提示
+  showFilterStatus('📋 选择时间范围和标签，搜索后即可导出小记');
+  
+  // 初始化联系作者功能
+  initializeContactModal();
+  
   console.log('初始化完成');
   
   // 添加一个测试按钮来检查当前日期状态
@@ -621,3 +630,30 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('=== 检查完成 ===');
   }, 1000);
 });
+
+// 初始化联系作者模态框
+function initializeContactModal() {
+  // 联系作者按钮点击事件
+  elements.contactAuthor.addEventListener('click', () => {
+    elements.contactModal.style.display = 'flex';
+  });
+  
+  // 关闭按钮点击事件
+  elements.modalClose.addEventListener('click', () => {
+    elements.contactModal.style.display = 'none';
+  });
+  
+  // 点击模态框背景关闭
+  elements.contactModal.addEventListener('click', (e) => {
+    if (e.target === elements.contactModal) {
+      elements.contactModal.style.display = 'none';
+    }
+  });
+  
+  // ESC键关闭模态框
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && elements.contactModal.style.display === 'flex') {
+      elements.contactModal.style.display = 'none';
+    }
+  });
+}

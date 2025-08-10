@@ -8,10 +8,10 @@ body {
   font-size: 11px;
   line-height: 1.4;
   /* 设置body固定宽度，高度自适应 */
-  width: 310px;
-  min-height: 220px;
-  max-height: 500px;
-  overflow-y: auto;
+  width: 320px;
+  min-height: 260px;
+  max-height: 600px;
+  overflow-y: hidden;
 }
 
 /* 容器 */
@@ -24,8 +24,8 @@ body {
   /* 移除圆角和阴影，让内容填满弹窗 */
   border-radius: 0;
   box-shadow: none;
-  /* 允许垂直滚动以适应动态内容 */
-  overflow-y: auto;
+  /* 隐藏垂直滚动条 */
+  overflow-y: hidden;
   box-sizing: border-box;
   /* 关键：确保不会限制子元素的z-index */
   position: relative;
@@ -102,7 +102,7 @@ body {
   margin-bottom: 8px;
   border-left: 2px solid #4caf50;
   line-height: 1.2;
-  text-align: center;
+  text-align: left;
 }
 
 /* 筛选项目 */
@@ -579,7 +579,7 @@ body {
 
 .filter-actions {
   display: flex;
-  gap: 6px;
+  gap: 4px;
   margin-top: 8px;
   justify-content: center;
   flex-shrink: 0;
@@ -787,6 +787,190 @@ body {
   .tag-dropdown {
     width: 100%;
   }
+}
+
+/* === 紧凑按钮和联系作者样式 === */
+.btn-compact {
+  padding: 4px 6px;
+  font-size: 9px;
+  gap: 2px;
+  min-width: 45px;
+}
+
+.btn-info {
+  background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.2);
+}
+
+.btn-info:hover {
+  background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(33, 150, 243, 0.3);
+}
+
+/* === 联系作者模态框样式 === */
+.contact-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(2px);
+}
+
+.modal-content {
+  background: linear-gradient(135deg, #ffffff 0%, #f8fffe 100%);
+  border-radius: 12px;
+  width: 240px;
+  height: 160px;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15), 0 8px 24px rgba(76, 175, 80, 0.1);
+  border: 1px solid rgba(76, 175, 80, 0.1);
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.modal-close-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+}
+
+.modal-close {
+  cursor: pointer;
+  font-size: 18px;
+  color: #666;
+  font-weight: bold;
+  line-height: 1;
+  padding: 4px 6px;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  background: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+.modal-close:hover {
+  color: #333;
+  background: rgba(255, 255, 255, 0.95);
+  transform: scale(1.1);
+}
+
+.modal-body {
+  padding: 16px;
+  text-align: center;
+  height: calc(100% - 16px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 16px;
+  position: relative;
+}
+
+.author-intro {
+  background: linear-gradient(135deg, #f8fffe 0%, #e8f5e8 100%);
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 8px;
+  border-left: 4px solid #4caf50;
+  flex-shrink: 0;
+}
+
+.author-intro p {
+  margin: 0;
+  font-size: 13px;
+  color: #2e7d32;
+  line-height: 1.5;
+  font-weight: 500;
+}
+
+.contact-section {
+  margin-top: 0;
+}
+
+.contact-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #2e7d32;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.contact-label::before {
+  content: '💬';
+  font-size: 16px;
+}
+
+.qr-code-placeholder {
+  margin: 0 auto;
+  width: 130px;
+  height: 130px;
+  border: 2px solid #4caf50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.1);
+  overflow: hidden;
+}
+
+.qr-code-placeholder img {
+  border-radius: 6px;
+  transition: transform 0.2s ease;
+}
+
+.qr-code-placeholder img:hover {
+  transform: scale(1.02);
+}
+
+.qr-placeholder {
+  color: #4caf50;
+  font-size: 11px;
+  text-align: center;
+  padding: 10px;
+  font-weight: 500;
+}
+
+.contact-footer {
+  margin-top: 0;
+  padding-top: 0;
+  font-size: 12px;
+  color: #2e7d32;
+  line-height: 1.4;
+}
+
+.contact-wechat {
+  font-size: 14px;
+  font-weight: 600;
+  color: #2e7d32;
+  background: linear-gradient(135deg, #f8fffe 0%, #e8f5e8 100%);
+  border-radius: 8px;
+  padding: 12px;
+  border-left: 4px solid #4caf50;
 }
 
 /* === 导出功能提示样式 === */

@@ -50,6 +50,7 @@
               <select id="tagSelect" class="tag-dropdown-compact">
                 <option value="">选择标签...</option>
               </select>
+              <button id="selectAllTags" class="select-all-tags-btn" style="display:none;">全选</button>
               <button id="clearTags" class="clear-tags-btn" style="display:none;">清空</button>
             </div>
             <div id="selectedTagsList" class="selected-tags-chips"></div>
@@ -77,16 +78,15 @@
             </label>
           </div>
         </div>
-      </div>
-    
-    <!-- 功能说明区域 -->
+        
+        <!-- 功能说明区域 -->
         <div class="export-notice">
           <div class="notice-content">
             <span class="notice-icon"></span>
             <span class="notice-text">仅支持导出文字，暂不支持导出图片、视频等多媒体内容</span>
           </div>
         </div>
-
+        
         <!-- 操作按钮区域 -->
         <div class="filter-actions">
           <button id="fetchNotes" class="btn btn-primary">
@@ -102,6 +102,7 @@
             导出
           </button>
         </div>
+      </div>
       </div>
     </section>
   </div>

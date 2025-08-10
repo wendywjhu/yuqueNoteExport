@@ -13,6 +13,7 @@ const elements = {
   startDateInput: document.getElementById('startDateInput'),
   endDateInput: document.getElementById('endDateInput'),
   selectedTagsList: document.getElementById('selectedTagsList'),
+  selectAllTags: document.getElementById('selectAllTags'),
   clearTags: document.getElementById('clearTags'),
   fetchNotes: document.getElementById('fetchNotes'),
   resetFilters: document.getElementById('resetFilters'),
@@ -282,6 +283,9 @@ function displayTags(tags) {
       elements.tagSelect.appendChild(option);
     });
   }
+  
+  // 更新全选按钮的显示状态
+  updateSelectAllButtonDisplay();
 }
 
 // 标签选择改变事件
@@ -301,10 +305,12 @@ function updateSelectedTagsDisplay() {
   // 清空标签列表
   elements.selectedTagsList.innerHTML = '';
   
-  // 显示/隐藏清空按钮
+  // 显示/隐藏按钮
   if (selectedTags.length === 0) {
+    elements.selectAllTags.style.display = 'none';
     elements.clearTags.style.display = 'none';
   } else {
+    elements.selectAllTags.style.display = 'inline-block';
     elements.clearTags.style.display = 'inline-block';
     
     // 创建标签芯片
@@ -325,7 +331,50 @@ function updateSelectedTagsDisplay() {
       elements.selectedTagsList.appendChild(tagChip);
     });
   }
+  
+  // 更新全选按钮的显示状态
+  updateSelectAllButtonDisplay();
 }
+
+// 更新全选按钮的显示状态
+function updateSelectAllButtonDisplay() {
+  if (availableTags.length === 0) {
+    elements.selectAllTags.style.display = 'none';
+    return;
+  }
+  
+  // 计算所有可选择的标签（包括"无标签"选项）
+  const allSelectableTags = ['__NO_TAG__', ...availableTags];
+  const allSelected = allSelectableTags.every(tag => selectedTags.includes(tag));
+  
+  if (allSelected) {
+    elements.selectAllTags.textContent = '取消全选';
+    elements.selectAllTags.style.display = 'inline-block';
+  } else if (selectedTags.length > 0) {
+    elements.selectAllTags.textContent = '全选';
+    elements.selectAllTags.style.display = 'inline-block';
+  } else {
+    elements.selectAllTags.textContent = '全选';
+    elements.selectAllTags.style.display = availableTags.length > 0 ? 'inline-block' : 'none';
+  }
+}
+
+// 全选标签
+elements.selectAllTags.addEventListener('click', () => {
+  // 计算所有可选择的标签（包括"无标签"选项）
+  const allSelectableTags = ['__NO_TAG__', ...availableTags];
+  const allSelected = allSelectableTags.every(tag => selectedTags.includes(tag));
+  
+  if (allSelected) {
+    // 如果已全选，则取消全选
+    selectedTags = [];
+  } else {
+    // 否则选择所有标签
+    selectedTags = [...allSelectableTags];
+  }
+  
+  updateSelectedTagsDisplay();
+});
 
 // 清空标签选择
 elements.clearTags.addEventListener('click', () => {

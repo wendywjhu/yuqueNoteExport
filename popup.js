@@ -565,11 +565,27 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   console.log('收到消息:', request);
   
   if (request.action === "displayTags") {
+    console.log('=== 收到标签显示消息 ===');
+    console.log('request对象:', request);
+    console.log('request.success:', request.success);
+    console.log('request.tags类型:', Array.isArray(request.tags) ? '数组' : typeof request.tags);
+    console.log('request.tags值:', request.tags);
+    console.log('request.tags长度:', request.tags ? request.tags.length : 'N/A');
+    
     if (request.success) {
-      displayTags(request.tags);
-      // 移除标签获取成功的页面显示，只在控制台记录
-      console.log(`成功获取 ${request.tags.length} 个标签`);
+      console.log('标签获取成功，准备显示');
+      if (request.tags && Array.isArray(request.tags)) {
+        console.log('标签列表详情:');
+        request.tags.forEach((tag, index) => {
+          console.log(`  标签[${index}]: "${tag}" (类型: ${typeof tag})`);
+        });
+      } else {
+        console.warn('⚠️ request.tags 不是数组或为空');
+      }
+      displayTags(request.tags || []);
+      console.log(`成功获取 ${request.tags ? request.tags.length : 0} 个标签`);
     } else {
+      console.error('标签获取失败:', request.error);
       showFilterStatus(`获取标签失败: ${request.error || '未知错误'}`);
     }
   } else if (request.action === "searchProgress") {

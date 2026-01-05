@@ -419,24 +419,65 @@ async function saveNotesToStorage(notes, filterParams = {}) {
 
   // 第一阶段：快速筛选笔记
   let filteredNotes = notes.filter(note => {
+    // 添加详细的标签日志
+    console.log(`\n=== 检查笔记 ${note.id} ===`);
+    console.log('笔记标题:', note.title);
+    console.log('笔记tags类型:', typeof note.tags);
+    console.log('笔记tags是否为数组:', Array.isArray(note.tags));
+    console.log('笔记tags值:', note.tags);
+    
+    if (note.tags && Array.isArray(note.tags)) {
+      console.log('笔记标签数量:', note.tags.length);
+      note.tags.forEach((tag, index) => {
+        console.log(`  标签[${index}]:`, {
+          '原始对象': tag,
+          'tag类型': typeof tag,
+          '是否有name属性': tag && typeof tag === 'object' && 'name' in tag,
+          'tag.name值': tag.name,
+          'tag.name类型': typeof tag.name,
+          'tag的所有属性': tag && typeof tag === 'object' ? Object.keys(tag) : 'N/A'
+        });
+      });
+    } else {
+      console.log('⚠️ 笔记没有tags或tags不是数组');
+    }
+    
     // 标签筛选逻辑
     let matchesTags = true;
     if (tags.length > 0) {
+      console.log('筛选条件标签:', tags);
       const hasNoTagFilter = tags.includes('__NO_TAG__');
       const hasRegularTags = tags.filter(tag => tag !== '__NO_TAG__');
+      
+      console.log('是否筛选无标签:', hasNoTagFilter);
+      console.log('常规标签筛选:', hasRegularTags);
       
       let matchesRegularTags = false;
       let matchesNoTag = false;
       
-      if (hasRegularTags.length > 0) {
-        matchesRegularTags = note.tags && note.tags.some(tag => hasRegularTags.includes(tag.name));
+      if (hasRegularTags.length > 0 && note.tags && Array.isArray(note.tags)) {
+        console.log('开始匹配常规标签...');
+        note.tags.forEach(tag => {
+          console.log(`  比较: tag.name="${tag.name}" (类型: ${typeof tag.name})`);
+          console.log(`  是否在筛选列表中: ${hasRegularTags.includes(tag.name)}`);
+          if (tag.name && hasRegularTags.includes(tag.name)) {
+            matchesRegularTags = true;
+            console.log(`  ✓ 匹配到标签: ${tag.name}`);
+          } else if (!tag.name) {
+            console.warn(`  ⚠️ 标签对象缺少name属性:`, tag);
+          }
+        });
       }
       
       if (hasNoTagFilter) {
         matchesNoTag = !note.tags || note.tags.length === 0;
+        console.log(`无标签匹配结果: ${matchesNoTag} (note.tags: ${note.tags ? '存在' : '不存在'}, length: ${note.tags ? note.tags.length : 0})`);
       }
       
       matchesTags = matchesRegularTags || matchesNoTag;
+      console.log(`标签筛选结果: matchesTags=${matchesTags} (matchesRegularTags=${matchesRegularTags}, matchesNoTag=${matchesNoTag})`);
+    } else {
+      console.log('没有标签筛选条件，匹配所有笔记');
     }
     
     // 日期筛选逻辑
@@ -471,7 +512,10 @@ async function saveNotesToStorage(notes, filterParams = {}) {
       console.log(`笔记 ${note.id} 日期筛选结果: ${matchesDate}`);
     }
     
-    return matchesTags && matchesDate;
+    const finalMatch = matchesTags && matchesDate;
+    console.log(`笔记 ${note.id} 最终筛选结果: ${finalMatch} (标签: ${matchesTags}, 日期: ${matchesDate})`);
+    
+    return finalMatch;
   });
 
   console.log(`筛选完成，符合条件的笔记: ${filteredNotes.length} 条`);
@@ -591,7 +635,40 @@ async function saveNotesToStorage(notes, filterParams = {}) {
     // 添加笔记元信息
     const noteDate = new Date(note.content_updated_at || note.created_at).toLocaleDateString('zh-CN');
     const noteTitle = note.title || '无标题';
-    const noteTags = note.tags ? note.tags.map(t => t.name).join(', ') : '无标签';
+    
+    // 详细日志：导出标签处理
+    console.log(`\n=== 导出笔记 ${note.id} 的标签 ===`);
+    console.log('note.tags:', note.tags);
+    console.log('note.tags类型:', typeof note.tags);
+    console.log('note.tags是否为数组:', Array.isArray(note.tags));
+    
+    let noteTags = '无标签';
+    if (note.tags && Array.isArray(note.tags)) {
+      console.log('开始处理标签数组，长度:', note.tags.length);
+      const tagNames = note.tags.map((t, index) => {
+        console.log(`  标签[${index}]:`, {
+          't对象': t,
+          't.name': t.name,
+          't.name类型': typeof t.name,
+          't.name是否有效': t && t.name && typeof t.name === 'string'
+        });
+        return t.name;
+      }).filter(name => {
+        const isValid = name && typeof name === 'string' && name.trim().length > 0;
+        if (!isValid) {
+          console.warn(`  ⚠️ 导出时过滤掉无效标签名称:`, name);
+        }
+        return isValid;
+      });
+      
+      noteTags = tagNames.length > 0 ? tagNames.join(', ') : '无标签';
+      console.log(`提取到的有效标签: [${tagNames.join(', ')}]`);
+    } else {
+      console.log('笔记没有标签或标签不是数组');
+    }
+    
+    console.log(`笔记 ${note.id} 最终导出的标签字符串: "${noteTags}"`);
+    
     const noteUrl = note.book ? `https://www.yuque.com/${note.book.user.login}/${note.book.slug}/${note.slug}` : '';
     
     console.log(`笔记 ${note.id} 元信息: 标题=${noteTitle}, 日期=${noteDate}, 标签=${noteTags}`);
@@ -628,17 +705,42 @@ async function saveNotesToStorage(notes, filterParams = {}) {
     console.log(`已处理完成笔记 ${note.id}，当前进度: ${savedCount}/${filteredNotes.length}`);
     
     // 统计标签
+    console.log(`\n=== 统计笔记 ${note.id} 的标签 ===`);
     if (note.tags && Array.isArray(note.tags)) {
-      note.tags.forEach(tag => {
-        if (tags.includes(tag.name)) {
-          tagStats[tag.name]++;
+      console.log('笔记标签数量:', note.tags.length);
+      note.tags.forEach((tag, index) => {
+        console.log(`  标签[${index}]:`, {
+          'tag对象': tag,
+          'tag.name': tag.name,
+          'tag.name类型': typeof tag.name,
+          '是否在筛选列表中': tags.includes(tag.name),
+          '当前tagStats状态': JSON.stringify(tagStats)
+        });
+        
+        if (tag.name && typeof tag.name === 'string') {
+          if (tags.includes(tag.name)) {
+            console.log(`  ✓ 统计标签: ${tag.name}`);
+            if (!tagStats[tag.name]) {
+              tagStats[tag.name] = 0;
+            }
+            tagStats[tag.name]++;
+          } else {
+            console.log(`  ✗ 跳过标签: ${tag.name} (不在筛选列表中)`);
+          }
+        } else {
+          console.warn(`  ⚠️ 标签对象无效，无法统计:`, tag);
         }
       });
+    } else {
+      console.log(`笔记 ${note.id} 没有标签可统计`);
     }
     
     if (tags.includes('__NO_TAG__') && (!note.tags || note.tags.length === 0)) {
+      console.log(`  ✓ 统计无标签笔记`);
       tagStats['无标签']++;
     }
+    
+    console.log(`当前标签统计结果:`, JSON.stringify(tagStats, null, 2));
     
     // 每处理10条发送一次进度
     if (savedCount % 10 === 0) {
@@ -697,45 +799,111 @@ function collectAllTags(notes) {
 async function fetchTagsDirectly() {
   const url = "https://www.yuque.com/api/modules/note/tags/TagController/index";
   
-  console.log('开始获取标签列表...');
+  console.log('=== 开始获取标签列表 ===');
+  console.log('标签API URL:', url);
     
-      chrome.cookies.getAll({domain: "www.yuque.com"}, (cookies) => {
-        let cookieString = cookies.map(cookie => `${cookie.name}=${cookie.value}`).join('; ');
-        
+  chrome.cookies.getAll({domain: "www.yuque.com"}, (cookies) => {
+    console.log('获取到的Cookie数量:', cookies.length);
+    let cookieString = cookies.map(cookie => `${cookie.name}=${cookie.value}`).join('; ');
+    
     fetch(url, {
-          headers: {
+      headers: {
         'Cookie': cookieString,
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
         'Accept': 'application/json, text/plain, */*'
-          }
-        })
-        .then(response => {
+      }
+    })
+    .then(response => {
       console.log('标签API响应状态:', response.status);
+      console.log('标签API响应头:', Object.fromEntries(response.headers.entries()));
       
-          if (!response.ok) {
+      if (!response.ok) {
         return response.text().then(text => {
-          console.log('标签API错误响应:', text);
+          console.error('标签API错误响应内容:', text);
           throw new Error(`HTTP error! status: ${response.status}, message: ${text}`);
         });
-          }
-          return response.json();
-        })
+      }
+      return response.json();
+    })
     .then(data => {
-      console.log('标签API成功响应:', data);
+      console.log('=== 标签API原始响应数据 ===');
+      console.log('响应数据类型:', typeof data);
+      console.log('响应数据完整结构:', JSON.stringify(data, null, 2));
+      console.log('data.data 类型:', Array.isArray(data.data) ? '数组' : typeof data.data);
+      console.log('data.data 值:', data.data);
+      
+      // 详细分析数据结构
+      if (data.data) {
+        console.log('data.data 长度:', data.data.length);
+        if (Array.isArray(data.data) && data.data.length > 0) {
+          console.log('第一个标签示例:', data.data[0]);
+          console.log('标签数据结构分析:');
+          data.data.forEach((tag, index) => {
+            console.log(`  标签[${index}]:`, {
+              '原始对象': tag,
+              '是否有name属性': 'name' in tag,
+              'name值': tag.name,
+              'name类型': typeof tag.name,
+              '所有属性': Object.keys(tag)
+            });
+          });
+        }
+      } else {
+        console.warn('⚠️ data.data 不存在或为空');
+        console.log('data的所有属性:', Object.keys(data));
+      }
     
       // 从API响应中提取标签名称
-      const tags = data.data ? data.data.map(tag => tag.name).sort() : [];
+      let tags = [];
+      if (data.data && Array.isArray(data.data)) {
+        console.log('开始提取标签名称...');
+        tags = data.data
+          .map((tag, index) => {
+            console.log(`处理标签[${index}]:`, {
+              'tag对象': tag,
+              'tag.name': tag.name,
+              'tag.name是否存在': tag && typeof tag === 'object' && 'name' in tag,
+              'tag.name类型': typeof tag.name,
+              'tag.name是否为空': !tag.name
+            });
+            return tag.name;
+          })
+          .filter(name => {
+            const isValid = name && typeof name === 'string' && name.trim().length > 0;
+            if (!isValid) {
+              console.warn(`⚠️ 过滤掉无效标签名称:`, name);
+            }
+            return isValid;
+          })
+          .sort();
+        console.log(`提取后有效标签数量: ${tags.length}`);
+      } else {
+        console.warn('⚠️ data.data 不是数组，无法提取标签');
+        if (data.data && typeof data.data === 'object') {
+          console.log('data.data 实际类型和内容:', {
+            '类型': typeof data.data,
+            '是否为数组': Array.isArray(data.data),
+            '值': data.data
+          });
+        }
+      }
     
-      console.log(`成功获取 ${tags.length} 个标签:`, tags);
+      console.log(`=== 最终获取到的标签列表 ===`);
+      console.log(`标签总数: ${tags.length}`);
+      console.log('标签列表:', tags);
+      console.log('标签列表JSON:', JSON.stringify(tags, null, 2));
     
-    chrome.runtime.sendMessage({
-      action: "displayTags",
+      chrome.runtime.sendMessage({
+        action: "displayTags",
         success: true,
         tags: tags
       });
     })
     .catch(error => {
-      console.error('获取标签时出错:', error);
+      console.error('=== 获取标签时出错 ===');
+      console.error('错误类型:', error.constructor.name);
+      console.error('错误消息:', error.message);
+      console.error('错误堆栈:', error.stack);
       chrome.runtime.sendMessage({
         action: "displayTags",
         success: false,
@@ -777,7 +945,40 @@ async function exportNotes({ filterConditions } = {}) {
           // 添加笔记元信息
           const noteDate = new Date(note.content_updated_at || note.created_at).toLocaleDateString('zh-CN');
           const noteTitle = note.title || '';
-          const noteTags = note.tags ? note.tags.map(t => t.name).join(', ') : '无标签';
+          
+          // 详细日志：导出标签处理
+          console.log(`\n=== 导出函数中处理笔记 ${note.id} 的标签 ===`);
+          console.log('note.tags:', note.tags);
+          console.log('note.tags类型:', typeof note.tags);
+          console.log('note.tags是否为数组:', Array.isArray(note.tags));
+          
+          let noteTags = '无标签';
+          if (note.tags && Array.isArray(note.tags)) {
+            console.log('开始处理标签数组，长度:', note.tags.length);
+            const tagNames = note.tags.map((t, index) => {
+              console.log(`  标签[${index}]:`, {
+                't对象': t,
+                't.name': t.name,
+                't.name类型': typeof t.name,
+                't.name是否有效': t && t.name && typeof t.name === 'string'
+              });
+              return t.name;
+            }).filter(name => {
+              const isValid = name && typeof name === 'string' && name.trim().length > 0;
+              if (!isValid) {
+                console.warn(`  ⚠️ 导出时过滤掉无效标签名称:`, name);
+              }
+              return isValid;
+            });
+            
+            noteTags = tagNames.length > 0 ? tagNames.join(', ') : '无标签';
+            console.log(`提取到的有效标签: [${tagNames.join(', ')}]`);
+          } else {
+            console.log('笔记没有标签或标签不是数组');
+          }
+          
+          console.log(`笔记 ${note.id} 最终导出的标签字符串: "${noteTags}"`);
+          
           const noteUrl = note.book ? `https://www.yuque.com/${note.book.user.login}/${note.book.slug}/${note.slug}` : '';
           
           // 根据用户选择生成笔记头部

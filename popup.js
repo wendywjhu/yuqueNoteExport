@@ -495,7 +495,7 @@ elements.exportNotes.addEventListener('click', () => {
   
   // 获取导出格式选项
   const exportOptions = {
-    includeTitle: document.getElementById('exportTitle').checked,
+    //includeTitle: document.getElementById('exportTitle').checked,
     includeTime: document.getElementById('exportTime').checked,
     includeTags: document.getElementById('exportTags').checked
   };

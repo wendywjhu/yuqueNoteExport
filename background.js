@@ -677,10 +677,6 @@ async function saveNotesToStorage(notes, filterParams = {}) {
     // 根据用户选择生成笔记头部
     let noteHeader = '';
     
-    // 标题（如果选择包含标题）
-    if (exportOptions.includeTitle) {
-      noteHeader += `# ${noteTitle}\n\n`;
-    }
     
     // 元信息行
     const metaInfo = [];
@@ -984,10 +980,6 @@ async function exportNotes({ filterConditions } = {}) {
           // 根据用户选择生成笔记头部
           let noteHeader = '';
           
-          // 标题（如果选择包含标题）
-          if (exportOptions.includeTitle) {
-            noteHeader += `# ${noteTitle}\n\n`;
-              }
           
           // 元信息行
           const metaInfo = [];

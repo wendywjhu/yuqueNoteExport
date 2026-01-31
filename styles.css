@@ -830,12 +830,20 @@ body {
 .modal-content {
   background: linear-gradient(135deg, #ffffff 0%, #f8fffe 100%);
   border-radius: 12px;
-  width: 240px;
-  height: 160px;
-  overflow-y: auto;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15), 0 8px 24px rgba(76, 175, 80, 0.1);
+  
+  /* 🔴 修改宽度：从 240px 改为 280px (插件宽320，留出边距) */
+  width: 280px; 
+  
+  /* 🔴 修改高度：从固定 160px 改为 auto，让图片撑开它 */
+  height: auto; 
+  max-height: 520px; /* 防止图片过长超出屏幕 */
+  
+  overflow: hidden; /* 保持圆角 */
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2), 0 8px 24px rgba(76, 175, 80, 0.15);
   border: 1px solid rgba(76, 175, 80, 0.1);
   animation: modalSlideIn 0.3s ease-out;
+  display: flex;
+  flex-direction: column;
 }
 
 @keyframes modalSlideIn {
@@ -857,6 +865,8 @@ body {
 }
 
 .modal-close {
+  background: rgba(255, 255, 255, 0.9); /* 半透明白色背景，防止挡住图片看不清 */
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
   cursor: pointer;
   font-size: 18px;
   color: #666;
@@ -880,14 +890,11 @@ body {
 }
 
 .modal-body {
-  padding: 16px;
-  text-align: center;
-  height: calc(100% - 16px);
+  padding: 0; /* 图片通常贴边或者留很少的白边比较好看，我们这里设为0，让图片自己控制 */
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: 16px;
-  position: relative;
+  align-items: center;
+  width: 100%;
 }
 
 .author-intro {
@@ -904,6 +911,36 @@ body {
   font-size: 13px;
   color: #2e7d32;
   line-height: 1.5;
+  font-weight: 500;
+}
+
+
+.author-image-container {
+  width: 100%;
+  padding: 16px 16px 8px 16px; /* 上左右留白，下方少留白 */
+  box-sizing: border-box;
+}
+
+.author-img {
+  width: 100%;
+  height: auto; /* 高度自适应 */
+  border-radius: 8px; /* 图片本身也搞个圆角 */
+  box-shadow: 0 4px 12px rgba(255, 82, 82, 0.2); /* 给红色卡片加一点红色系的阴影 */
+  display: block;
+  object-fit: cover;
+}
+
+/* 4. 文字样式：小巧、精致、居中 */
+.author-text-container {
+  padding: 0 16px 20px 16px; /* 底部留多点白 */
+  text-align: center;
+}
+
+.author-text-container p {
+  margin: 0;
+  font-size: 12px; /* 小字文案 */
+  color: #666;
+  line-height: 1.6; /* 增加行高，读起来更舒服 */
   font-weight: 500;
 }
 
